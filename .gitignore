@@ -1,0 +1,9 @@
+node_modules/
+dist/
+dist-web/
+.chrome-dev-profile/
+*.zip
+.DS_Store
+*.log
+.env
+.env.*

@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>New Tab</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app" id="app">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <div>
+            <h1 class="brand-title">Link Dashboard</h1>
+            <p class="brand-sub" id="clock">—</p>
+          </div>
+        </div>
+
+        <div class="search-wrap">
+          <span class="search-icon" aria-hidden="true">🔍</span>
+          <input
+            type="search"
+            id="search-input"
+            class="search-input"
+            placeholder="Search links…"
+            autocomplete="off"
+            spellcheck="false"
+            aria-label="Search shortcuts"
+          />
+          <button type="button" class="search-clear" id="search-clear" hidden aria-label="Clear search">✕</button>
+        </div>
+
+        <div class="topbar-actions">
+          <span class="dev-badge" id="dev-badge" hidden title="Running outside Chrome extension — data uses localStorage">
+            Local preview
+          </span>
+          <button type="button" class="btn btn-ghost btn-lock" id="btn-lock" title="Unlock to edit shortcuts">
+            <span class="btn-icon" id="lock-icon">🔒</span>
+            <span id="lock-label">Locked</span>
+          </button>
+          <button type="button" class="btn btn-ghost" id="btn-add" title="Add shortcut" hidden>
+            <span class="btn-icon">+</span>
+            Add link
+          </button>
+          <button type="button" class="btn btn-ghost" id="btn-archive-view" title="View archive" hidden>
+            <span class="btn-icon">📦</span>
+            Archive
+          </button>
+          <button type="button" class="btn btn-ghost" id="btn-groups" title="Manage groups" hidden>
+            <span class="btn-icon">⊞</span>
+            Groups
+          </button>
+          <button type="button" class="btn btn-ghost" id="btn-group-filter" title="Filter by group" hidden>
+            <span class="btn-icon">📁</span>
+            Filter
+          </button>
+          <button type="button" class="btn btn-ghost" id="btn-settings" title="Customize dashboard" hidden>
+            <span class="btn-icon">⚙</span>
+            Customize
+          </button>
+        </div>
+      </header>
+
+      <dialog class="modal" id="group-filter-modal">
+        <div class="modal-card">
+          <header class="modal-header">
+            <h2>Filter shortcuts by group</h2>
+            <button type="button" class="icon-btn" id="group-filter-modal-close" aria-label="Close">×</button>
+          </header>
+          <div class="modal-body">
+            <div class="filter-group-checkboxes">
+              <div class="store-checkbox">
+                <input type="checkbox" id="filter-all" name="filter-group" value="all" checked>
+                <label for="filter-all">All (all groups)</label>
+              </div>
+              <div class="store-checkbox">
+                <input type="checkbox" id="filter-social" name="filter-group" value="Social">
+                <label for="filter-social">Social (YouTube, Gmail)</label>
+              </div>
+              <div class="store-checkbox">
+                <input type="checkbox" id="filter-design" name="filter-group" value="Design">
+                <label for="filter-design">Design (GitHub, Figma, Dribbble)</label>
+              </div>
+              <div class="store-checkbox">
+                <input type="checkbox" id="filter-productivity" name="filter-group" value="Productivity">
+                <label for="filter-productivity">Productivity</label>
+              </div>
+              <div class="store-checkbox">
+                <input type="checkbox" id="filter-development" name="filter-group" value="Development">
+                <label for="filter-development">Development</label>
+              </div>
+            </div>
+            <p class="panel-help">
+              Select which groups to show. Filtering hides shortcuts from groups you don't select.
+            </p>
+            <p class="panel-help" id="filter-summary"></p>
+          </div>
+          <footer class="modal-footer">
+            <div class="modal-footer-right">
+              <button type="button" class="btn btn-ghost" id="btn-group-filter-clear">Clear all</button>
+              <button type="button" class="btn btn-primary" id="btn-group-filter-apply">Apply</button>
+            </div>
+          </footer>
+        </div>
+      </dialog>
+
+      <main class="main">
+        <!-- Tabs bar (shown in tabs display mode) -->
+        <div class="group-tabs-bar" id="group-tabs-bar" hidden>
+          <div class="group-tabs" id="group-tabs" role="tablist" aria-label="Groups"></div>
+        </div>
+
+        <!-- Bulk action toolbar (visible when unlocked) -->
+        <div class="bulk-toolbar" id="bulk-toolbar" hidden>
+          <label class="bulk-select-all-label">
+            <input type="checkbox" id="bulk-select-all" />
+            <span>Select all</span>
+          </label>
+          <span class="bulk-count" id="bulk-count">0 selected</span>
+          <div class="bulk-actions">
+            <select id="bulk-move-group" class="bulk-group-select" title="Move to group">
+              <option value="">Move to group…</option>
+            </select>
+            <button type="button" class="btn btn-ghost btn-sm" id="bulk-archive-btn" title="Archive selected">
+              📦 Archive
+            </button>
+            <button type="button" class="btn btn-danger btn-sm" id="bulk-delete-btn" title="Delete selected">
+              🗑 Delete
+            </button>
+          </div>
+        </div>
+        <section
+          class="grid"
+          id="shortcut-grid"
+          aria-label="Link shortcuts"
+        ></section>
+        <p class="empty-state" id="empty-state" hidden>
+          No shortcuts yet. Click <strong>Add link</strong> to get started.
+        </p>
+      </main>
+
+      <!-- Right panel: Recent + Notes + Bookmarks -->
+      <aside class="right-panel" id="right-panel" hidden>
+        <div class="right-panel-inner">
+
+        <!-- Recently visited widget -->
+        <div class="recent-widget" id="recent-widget" hidden>
+          <div class="widget-header">
+            <button type="button" class="widget-toggle" id="recent-toggle" aria-expanded="true">
+              <span class="widget-toggle-icon">▾</span>
+              <span>Recently Visited</span>
+            </button>
+            <button type="button" class="recent-clear-btn" id="recent-clear-btn" title="Clear history">✕</button>
+          </div>
+          <div class="recent-body" id="recent-body">
+            <div class="recent-list" id="recent-list" role="list"></div>
+          </div>
+        </div>
+
+        </div><!-- /recent-widget -->
+
+        <div class="right-panel-divider" id="panel-divider-rn" hidden></div>
+
+        <!-- Quick Notes widget -->
+        <div class="notes-widget" id="notes-widget" hidden>
+          <div class="widget-header">
+            <button type="button" class="widget-toggle" id="notes-toggle" aria-expanded="true">
+              <span class="widget-toggle-icon">▾</span>
+              <span>Quick Notes</span>
+            </button>
+          </div>
+          <div class="notes-body" id="notes-body">
+            <textarea
+              id="notes-textarea"
+              class="notes-textarea"
+              placeholder="Jot down anything… auto-saved."
+              spellcheck="true"
+              aria-label="Quick notes"
+            ></textarea>
+            <div class="notes-footer">
+              <span class="notes-saved-hint" id="notes-saved-hint"></span>
+            </div>
+          </div>
+        </div>
+        <!-- Bookmarks widget -->
+        <div class="right-panel-divider" id="panel-divider" hidden></div>
+        <div class="bookmarks-widget" id="bookmarks-widget" hidden>
+          <div class="widget-header">
+            <button type="button" class="widget-toggle bookmarks-toggle" id="bookmarks-toggle" aria-expanded="true">
+              <span class="widget-toggle-icon">▾</span>
+              <span class="bookmarks-toggle-label">Browser Bookmarks</span>
+            </button>
+            <div class="bookmarks-search-wrap">
+              <input
+                type="search"
+                id="bookmarks-search"
+                class="bookmarks-search-input"
+                placeholder="Search bookmarks…"
+                autocomplete="off"
+                aria-label="Search bookmarks"
+              />
+            </div>
+          </div>
+          <div class="bookmarks-body" id="bookmarks-body">
+            <div class="bookmarks-tree" id="bookmarks-tree" role="tree" aria-label="Bookmarks"></div>
+          </div>
+        </div><!-- /bookmarks-widget -->
+
+        </div><!-- /right-panel-inner -->
+      </aside>
+    </div>
+
+    <!-- Add / Edit shortcut modal -->
+    <dialog class="modal" id="shortcut-modal">
+      <form method="dialog" class="modal-card" id="shortcut-form">
+        <header class="modal-header">
+          <h2 id="shortcut-modal-title">Add shortcut</h2>
+          <button type="button" class="icon-btn" id="shortcut-modal-close" aria-label="Close">×</button>
+        </header>
+
+        <div class="modal-body">
+          <input type="hidden" id="field-id" />
+
+          <label class="field">
+            <span>Title</span>
+            <input type="text" id="field-title" placeholder="My website" autocomplete="off" />
+          </label>
+
+          <label class="field">
+            <span>URL</span>
+            <input type="url" id="field-url" placeholder="https://example.com" required autocomplete="off" />
+          </label>
+
+          <label class="field">
+            <span>Description <em>(optional)</em></span>
+            <textarea id="field-description" placeholder="Short note or remark about this link…" rows="2" autocomplete="off"></textarea>
+          </label>
+
+          <label class="field field-check">
+            <input type="checkbox" id="field-show-description" checked />
+            <span>Show description on tile</span>
+          </label>
+
+          <div class="field field-row-2">
+            <label class="field">
+              <span>Group / Category <em>(optional)</em></span>
+              <input type="text" id="field-group" placeholder="e.g. Work, Tools, Social…" autocomplete="off" list="group-suggestions" />
+              <datalist id="group-suggestions"></datalist>
+            </label>
+            <label class="field">
+              <span>Display order</span>
+              <input type="number" id="field-order" placeholder="0" min="0" step="1" value="0" autocomplete="off" />
+            </label>
+          </div>
+
+          <label class="field field-inline">
+            <span>Tile color</span>
+            <input type="color" id="field-color" value="#4f6ef7" />
+          </label>
+
+          <fieldset class="field">
+            <legend>When clicked</legend>
+            <div class="segmented" role="radiogroup" aria-label="Open link in">
+              <label class="segment">
+                <input type="radio" name="open-in" value="new-tab" checked />
+                <span>New tab</span>
+              </label>
+              <label class="segment">
+                <input type="radio" name="open-in" value="same-tab" />
+                <span>Same tab</span>
+              </label>
+            </div>
+            <p class="panel-help">
+              <strong>New tab</strong> opens the site in a new browser tab (default).
+              <strong>Same tab</strong> redirects this page to the link.
+            </p>
+          </fieldset>
+
+          <section class="icon-picker" aria-label="Link image">
+            <div class="icon-picker-header">
+              <span class="icon-picker-title">Link image / icon</span>
+              <span class="icon-picker-hint">
+                Choose one source — empty Image URL uses the site favicon
+              </span>
+            </div>
+
+            <!-- Final icon value saved with the shortcut (URL or data URL) -->
+            <input type="hidden" id="field-icon" value="" />
+
+            <div class="icon-mode-tabs" role="tablist" aria-label="Icon source">
+              <button
+                type="button"
+                class="icon-mode-tab is-active"
+                role="tab"
+                data-icon-mode="url"
+                aria-selected="true"
+                aria-controls="icon-panel-url"
+              >
+                Image URL
+              </button>
+              <button
+                type="button"
+                class="icon-mode-tab"
+                role="tab"
+                data-icon-mode="upload"
+                aria-selected="false"
+                aria-controls="icon-panel-upload"
+              >
+                Upload
+              </button>
+              <button
+                type="button"
+                class="icon-mode-tab"
+                role="tab"
+                data-icon-mode="search"
+                aria-selected="false"
+                aria-controls="icon-panel-search"
+              >
+                Search icons
+              </button>
+            </div>
+
+            <div class="icon-mode-panel is-active" id="icon-panel-url" data-panel="url" role="tabpanel">
+              <label class="field">
+                <span>Image URL</span>
+                <input
+                  type="url"
+                  id="field-icon-url"
+                  placeholder="https://example.com/icon.png"
+                  autocomplete="off"
+                />
+              </label>
+              <p class="panel-help">
+                Paste a direct link to a PNG, JPG, SVG, or WebP image.
+                Leave empty to use the website favicon.
+              </p>
+            </div>
+
+            <div class="icon-mode-panel" id="icon-panel-upload" data-panel="upload" role="tabpanel" hidden>
+              <label class="upload-drop" id="upload-drop">
+                <input type="file" id="field-icon-file" accept="image/*" hidden />
+                <span class="upload-drop-title">Click to upload image</span>
+                <span class="upload-drop-sub">PNG, JPG, SVG, WebP · max 800 KB</span>
+              </label>
+              <p class="panel-help" id="upload-status" hidden></p>
+              <button type="button" class="btn btn-ghost btn-sm" id="btn-clear-upload" hidden>
+                Clear upload
+              </button>
+            </div>
+
+            <div class="icon-mode-panel" id="icon-panel-search" data-panel="search" role="tabpanel" hidden>
+              <div class="icon-search-row">
+                <input
+                  type="search"
+                  id="field-icon-search"
+                  placeholder="Search free icons (github, mail, cloud…)"
+                  autocomplete="off"
+                />
+                <button type="button" class="btn btn-primary btn-sm" id="btn-icon-search">
+                  Search
+                </button>
+              </div>
+
+              <div class="chip-row" id="icon-suggestions" aria-label="Suggested searches"></div>
+
+              <p class="panel-help" id="icon-search-status">
+                Powered by <strong>Iconify</strong> (free open icon sets).
+              </p>
+
+              <div class="icon-results" id="icon-results" role="listbox" aria-label="Search results"></div>
+
+              <details class="free-stores">
+                <summary>Recommended free icon stores</summary>
+                <ul class="free-stores-list" id="free-stores-list"></ul>
+                <p class="panel-help">
+                  Browse a site, download an icon, then use <strong>Upload</strong> —
+                  or search here (Iconify includes Lucide, Heroicons, MDI, Simple Icons, Tabler, and more).
+                </p>
+              </details>
+            </div>
+          </section>
+
+          <div class="preview-row">
+            <span class="preview-label">Preview</span>
+            <div class="tile preview-tile" id="form-preview">
+              <div class="tile-icon-wrap">
+                <img alt="" class="tile-icon" id="preview-icon" />
+                <span class="tile-fallback" id="preview-fallback">?</span>
+              </div>
+              <span class="tile-label" id="preview-title">Title</span>
+            </div>
+          </div>
+        </div>
+
+        <footer class="modal-footer">
+          <div class="modal-footer-left">
+            <button type="button" class="btn btn-ghost btn-sm" id="btn-archive" hidden title="Move to archive">📦 Archive</button>
+            <button type="button" class="btn btn-danger" id="btn-delete" hidden>🗑 Delete</button>
+          </div>
+          <div class="modal-footer-right">
+            <button type="button" class="btn btn-ghost" id="btn-cancel">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="btn-save">Save</button>
+          </div>
+        </footer>
+      </form>
+    </dialog>
+
+    <!-- Settings modal -->
+    <dialog class="modal" id="settings-modal">
+      <form method="dialog" class="modal-card" id="settings-form">
+        <header class="modal-header">
+          <h2>Customize dashboard</h2>
+          <button type="button" class="icon-btn" id="settings-modal-close" aria-label="Close">×</button>
+        </header>
+
+        <div class="modal-body">
+          <label class="field field-inline">
+            <span>Background color</span>
+            <input type="color" id="setting-bg-color" value="#0f1221" />
+          </label>
+
+          <section class="bg-picker" aria-label="Background photo">
+            <div class="icon-picker-header">
+              <span class="icon-picker-title">Background photo</span>
+              <span class="icon-picker-hint">
+                Choose one option — only the selected section is active
+              </span>
+            </div>
+
+            <!-- Stored value: empty | https URL | data URL -->
+            <input type="hidden" id="setting-bg-image" value="" />
+
+            <div class="icon-mode-tabs bg-mode-tabs" role="tablist" aria-label="Background image source">
+              <button
+                type="button"
+                class="icon-mode-tab is-active"
+                role="tab"
+                data-bg-mode="none"
+                aria-selected="true"
+                aria-controls="bg-panel-none"
+              >
+                None
+              </button>
+              <button
+                type="button"
+                class="icon-mode-tab"
+                role="tab"
+                data-bg-mode="url"
+                aria-selected="false"
+                aria-controls="bg-panel-url"
+              >
+                Image URL
+              </button>
+              <button
+                type="button"
+                class="icon-mode-tab"
+                role="tab"
+                data-bg-mode="upload"
+                aria-selected="false"
+                aria-controls="bg-panel-upload"
+              >
+                Upload photo
+              </button>
+            </div>
+
+            <div class="icon-mode-panel is-active" id="bg-panel-none" data-bg-panel="none" role="tabpanel">
+              <p class="panel-help">Uses only the background color (no wallpaper).</p>
+            </div>
+
+            <div class="icon-mode-panel" id="bg-panel-url" data-bg-panel="url" role="tabpanel" hidden>
+              <label class="field">
+                <span>Image URL</span>
+                <input
+                  type="url"
+                  id="setting-bg-image-url"
+                  placeholder="https://…/wallpaper.jpg"
+                  autocomplete="off"
+                />
+              </label>
+            </div>
+
+            <div class="icon-mode-panel" id="bg-panel-upload" data-bg-panel="upload" role="tabpanel" hidden>
+              <label class="upload-drop" id="bg-upload-drop">
+                <input type="file" id="setting-bg-file" accept="image/*" hidden />
+                <span class="upload-drop-title">Click or drop a photo</span>
+                <span class="upload-drop-sub">PNG, JPG, WebP · max 4 MB · auto-resized</span>
+              </label>
+              <p class="panel-help" id="bg-upload-status" hidden></p>
+              <button type="button" class="btn btn-ghost btn-sm" id="btn-clear-bg" hidden>
+                Remove photo
+              </button>
+            </div>
+
+            <div class="bg-preview-wrap" id="bg-preview-wrap" hidden>
+              <span class="preview-label">Background preview</span>
+              <div class="bg-preview" id="bg-preview" aria-hidden="true"></div>
+            </div>
+          </section>
+
+          <fieldset class="field">
+            <legend>Tile size</legend>
+            <div class="segmented" role="radiogroup" aria-label="Tile size">
+              <label class="segment">
+                <input type="radio" name="tile-size" value="small" />
+                <span>Small</span>
+              </label>
+              <label class="segment">
+                <input type="radio" name="tile-size" value="medium" checked />
+                <span>Medium</span>
+              </label>
+              <label class="segment">
+                <input type="radio" name="tile-size" value="large" />
+                <span>Large</span>
+              </label>
+            </div>
+          </fieldset>
+
+          <label class="field">
+            <span>Columns <em>(0 = auto)</em></span>
+            <input type="range" id="setting-columns" min="0" max="12" step="1" value="0" />
+            <output id="setting-columns-value">Auto</output>
+          </label>
+
+          <label class="field field-check">
+            <input type="checkbox" id="setting-show-labels" checked />
+            <span>Show labels under icons</span>
+          </label>
+
+          <label class="field field-check">
+            <input type="checkbox" id="setting-show-bookmarks" />
+            <span>Show bookmarks panel</span>
+          </label>
+
+          <label class="field field-check">
+            <input type="checkbox" id="setting-show-notes" />
+            <span>Show quick notes panel</span>
+          </label>
+
+          <label class="field field-check">
+            <input type="checkbox" id="setting-show-recent" checked />
+            <span>Show recently visited bar</span>
+          </label>
+
+          <div class="field">
+            <span>Import / Export</span>
+            <div class="import-export-row">
+              <button type="button" class="btn btn-ghost btn-sm" id="btn-export">⬇ Export shortcuts</button>
+              <label class="btn btn-ghost btn-sm import-label" title="Import from JSON file">
+                ⬆ Import shortcuts
+                <input type="file" id="btn-import-file" accept=".json" hidden />
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <footer class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="btn-reset">Reset defaults</button>
+          <div class="modal-footer-right">
+            <button type="button" class="btn btn-ghost" id="btn-settings-cancel">Cancel</button>
+            <button type="submit" class="btn btn-primary">Apply</button>
+          </div>
+        </footer>
+      </form>
+    </dialog>
+
+    <div class="toast" id="toast" hidden role="status"></div>
+
+    <!-- Groups modal -->
+    <dialog class="modal" id="groups-modal">
+      <div class="modal-card">
+        <header class="modal-header">
+          <h2>Manage Groups</h2>
+          <button type="button" class="icon-btn" id="groups-modal-close" aria-label="Close">×</button>
+        </header>
+        <div class="modal-body">
+
+          <!-- Display mode -->
+          <div class="field">
+            <span>Display mode</span>
+            <div class="segmented" role="radiogroup" aria-label="Group display mode">
+              <label class="segment">
+                <input type="radio" name="group-display" value="grid" />
+                <span>Grid</span>
+              </label>
+              <label class="segment">
+                <input type="radio" name="group-display" value="tabs" />
+                <span>Tabs</span>
+              </label>
+              <label class="segment">
+                <input type="radio" name="group-display" value="list" />
+                <span>List</span>
+              </label>
+            </div>
+          </div>
+
+          <p class="panel-help">
+            Drag rows to reorder groups. Click a group name to rename it.
+          </p>
+
+          <!-- Add new group -->
+          <div class="add-group-row">
+            <input type="text" id="new-group-input" class="add-group-input" placeholder="New group name…" autocomplete="off" />
+            <button type="button" class="btn btn-primary btn-sm" id="btn-add-group">+ Add</button>
+          </div>
+
+          <!-- Group list -->
+          <ul class="group-manager-list" id="group-manager-list" aria-label="Groups"></ul>
+
+          <p class="panel-help" id="groups-empty-hint" hidden>
+            No groups yet. Add a group name when editing a link.
+          </p>
+        </div>
+        <footer class="modal-footer">
+          <div class="modal-footer-right">
+            <button type="button" class="btn btn-ghost" id="btn-groups-close">Close</button>
+          </div>
+        </footer>
+      </div>
+    </dialog>
+
+    <!-- Archive modal -->
+    <dialog class="modal" id="archive-modal">
+      <div class="modal-card">
+        <header class="modal-header">
+          <h2>📦 Archive</h2>
+          <button type="button" class="icon-btn" id="archive-modal-close" aria-label="Close">×</button>
+        </header>
+        <div class="modal-body">
+          <p class="panel-help">Archived links are hidden from the dashboard. Restore or permanently delete them here.</p>
+          <div class="archive-toolbar" id="archive-toolbar">
+            <label class="bulk-select-all-label">
+              <input type="checkbox" id="archive-select-all" />
+              <span>Select all</span>
+            </label>
+            <span class="bulk-count" id="archive-count">0 selected</span>
+            <div class="bulk-actions">
+              <button type="button" class="btn btn-ghost btn-sm" id="archive-restore-btn">↩ Restore</button>
+              <button type="button" class="btn btn-danger btn-sm" id="archive-delete-btn">🗑 Delete</button>
+            </div>
+          </div>
+          <ul class="archive-list" id="archive-list" aria-label="Archived shortcuts"></ul>
+          <p class="panel-help" id="archive-empty" hidden>No archived links.</p>
+        </div>
+        <footer class="modal-footer">
+          <div class="modal-footer-right">
+            <button type="button" class="btn btn-ghost" id="btn-archive-close">Close</button>
+          </div>
+        </footer>
+      </div>
+    </dialog>
+
+    <!-- Group Filter modal -->
+    <dialog class="modal" id="group-filter-modal">
+      <div class="modal-card">
+        <header class="modal-header">
+          <h2>Filter shortcuts by group</h2>
+          <button type="button" class="icon-btn" id="group-filter-modal-close" aria-label="Close">×</button>
+        </header>
+        <div class="modal-body">
+          <div class="filter-group-checkboxes">
+            <div class="store-checkbox">
+              <input type="checkbox" id="filter-all" name="filter-group" value="all" checked>
+              <label for="filter-all">All (all groups)</label>
+            </div>
+            <div class="store-checkbox">
+              <input type="checkbox" id="filter-social" name="filter-group" value="Social">
+              <label for="filter-social">Social (YouTube, Gmail)</label>
+            </div>
+            <div class="store-checkbox">
+              <input type="checkbox" id="filter-design" name="filter-group" value="Design">
+              <label for="filter-design">Design (GitHub, Figma, Dribbble)</label>
+            </div>
+            <div class="store-checkbox">
+              <input type="checkbox" id="filter-productivity" name="filter-group" value="Productivity">
+              <label for="filter-productivity">Productivity</label>
+            </div>
+            <div class="store-checkbox">
+              <input type="checkbox" id="filter-development" name="filter-group" value="Development">
+              <label for="filter-development">Development</label>
+            </div>
+          </div>
+          <p class="panel-help">
+            Select which groups to show. Filtering hides shortcuts from groups you don't select.
+          </p>
+          <p class="panel-help" id="filter-summary"></p>
+        </div>
+        <footer class="modal-footer">
+          <div class="modal-footer-right">
+            <button type="button" class="btn btn-ghost" id="btn-group-filter-clear">Clear all</button>
+            <button type="button" class="btn btn-primary" id="btn-group-filter-apply">Apply</button>
+          </div>
+        </footer>
+      </div>
+    </dialog>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

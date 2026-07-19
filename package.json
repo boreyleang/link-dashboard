@@ -1,0 +1,23 @@
+{
+  "name": "chrome-link-dashboard",
+  "version": "1.2.0",
+  "private": true,
+  "description": "Customizable Chrome new-tab link dashboard",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:ui": "vite",
+    "chrome": "node scripts/open-chrome.mjs",
+    "start": "node scripts/open-chrome.mjs",
+    "test": "node --test tests/**/*.test.js",
+    "package": "node scripts/package.mjs",
+    "build": "node scripts/package.mjs",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^6.3.5"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
