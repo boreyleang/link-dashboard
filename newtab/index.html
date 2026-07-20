@@ -581,6 +581,57 @@
               </label>
             </div>
           </div>
+
+          <section class="backup-section" aria-label="Backup settings">
+            <div class="backup-header">
+              <span class="backup-title">🔄 Backup & Restore</span>
+            </div>
+
+            <div class="backup-config">
+              <label class="field field-check">
+                <input type="checkbox" id="setting-auto-backup" />
+                <span>Enable auto backup</span>
+              </label>
+
+              <label class="field">
+                <span>Backup interval</span>
+                <select id="setting-backup-interval" class="backup-select">
+                  <option value="hourly">Hourly</option>
+                  <option value="daily" selected>Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Max backups to keep</span>
+                <input type="number" id="setting-max-backups" min="1" max="50" value="10" class="backup-input" />
+              </label>
+            </div>
+
+            <div class="backup-actions">
+              <button type="button" class="btn btn-primary btn-sm" id="btn-create-backup">
+                💾 Create backup now
+              </button>
+              <label class="btn btn-ghost btn-sm import-label" title="Import backup from JSON file">
+                ⬆ Import backup
+                <input type="file" id="btn-import-backup" accept=".json" hidden />
+              </label>
+              <button type="button" class="btn btn-ghost btn-sm" id="btn-export-all-backups" title="Export all backups">
+                ⬇ Export all backups
+              </button>
+            </div>
+
+            <div class="backup-history">
+              <div class="backup-history-header">
+                <span>Backup History</span>
+                <span class="backup-history-count" id="backup-count">0 backups</span>
+              </div>
+              <ul class="backup-list" id="backup-list" aria-label="Backup history">
+                <li class="backup-empty" id="backup-empty">No backups yet</li>
+              </ul>
+            </div>
+          </section>
         </div>
 
         <footer class="modal-footer">

@@ -1,15 +1,18 @@
 {
   "manifest_version": 3,
   "name": "Link Dashboard",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "A customizable new-tab dashboard for your web link shortcuts — icons, colors, and sizes your way.",
   "chrome_url_overrides": {
     "newtab": "newtab/index.html"
   },
-  "permissions": ["storage", "unlimitedStorage", "bookmarks", "history"],
+  "permissions": ["storage", "unlimitedStorage", "bookmarks", "history", "alarms"],
   "host_permissions": [
     "https://api.iconify.design/*"
   ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",

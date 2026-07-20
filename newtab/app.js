@@ -1,5 +1,17 @@
 import { loadState, saveState, resetState, faviconFromUrl, STORE_CATALOG } from '../lib/storage.js';
 import {
+  getConfig,
+  updateConfig,
+  createBackup,
+  getBackups,
+  deleteBackup,
+  restoreBackup,
+  exportBackupToFile,
+  importBackupFromFile,
+  exportAllBackupsToFile,
+  getAlarmIntervalMinutes,
+} from '../lib/backup.js';
+import {
   createShortcut,
   updateShortcut,
   removeShortcut,
@@ -145,6 +157,15 @@ const els = {
   btnAddGroup: document.getElementById('btn-add-group'),
   groupTabsBar: document.getElementById('group-tabs-bar'),
   groupTabs: document.getElementById('group-tabs'),
+  settingAutoBackup: document.getElementById('setting-auto-backup'),
+  settingBackupInterval: document.getElementById('setting-backup-interval'),
+  settingMaxBackups: document.getElementById('setting-max-backups'),
+  btnCreateBackup: document.getElementById('btn-create-backup'),
+  btnImportBackup: document.getElementById('btn-import-backup'),
+  btnExportAllBackups: document.getElementById('btn-export-all-backups'),
+  backupList: document.getElementById('backup-list'),
+  backupEmpty: document.getElementById('backup-empty'),
+  backupCount: document.getElementById('backup-count'),
 };
 
 /** @type {{ shortcuts: Array, archived: Array, settings: object }} */
@@ -416,6 +437,14 @@ function bindEvents() {
   els.settingsForm.addEventListener('submit', onSaveSettings);
   els.btnReset.addEventListener('click', onResetDefaults);
   els.settingColumns.addEventListener('input', syncColumnsLabel);
+
+  // Backup events
+  els.btnCreateBackup.addEventListener('click', onCreateBackup);
+  els.btnImportBackup.addEventListener('change', onImportBackup);
+  els.btnExportAllBackups.addEventListener('click', onExportAllBackups);
+  els.settingAutoBackup.addEventListener('change', onBackupConfigChange);
+  els.settingBackupInterval.addEventListener('change', onBackupConfigChange);
+  els.settingMaxBackups.addEventListener('change', onBackupConfigChange);
 
   // Group filter modal
   els.groupFilterModalClose.addEventListener('click', () => els.groupFilterModal.close());
@@ -1387,6 +1416,8 @@ function openSettingsModal() {
   }
 
   updateBgPreview();
+  loadBackupConfig();
+  renderBackupList();
   els.settingsModal.showModal();
 }
 
@@ -2295,6 +2326,187 @@ async function onImportShortcuts(event) {
   } catch (err) {
     console.error('Import failed', err);
     showToast(`Import failed: ${err.message}`);
+  }
+}
+
+// ── Backup & Restore ────────────────────────────────────
+
+async function loadBackupConfig() {
+  const config = await getConfig();
+  els.settingAutoBackup.checked = config.autoBackup;
+  els.settingBackupInterval.value = config.interval;
+  els.settingMaxBackups.value = config.maxBackups;
+}
+
+async function onBackupConfigChange() {
+  const config = {
+    autoBackup: els.settingAutoBackup.checked,
+    interval: els.settingBackupInterval.value,
+    maxBackups: Math.max(1, Math.min(50, Number(els.settingMaxBackups.value) || 10)),
+  };
+  await updateConfig(config);
+
+  // Notify service worker to reschedule alarm
+  if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+    try {
+      chrome.runtime.sendMessage({ type: 'scheduleAutoBackup' });
+    } catch {
+      // Service worker may not be available in dev mode
+    }
+  }
+
+  showToast(`Auto backup ${config.autoBackup ? 'enabled' : 'disabled'}`);
+}
+
+async function onCreateBackup() {
+  els.btnCreateBackup.disabled = true;
+  els.btnCreateBackup.textContent = 'Backing up…';
+  try {
+    const backup = await createBackup('manual');
+    showToast(`Backup created: ${new Date(backup.timestamp).toLocaleString()}`);
+    await renderBackupList();
+  } catch (err) {
+    console.error('Backup failed', err);
+    showToast('Backup failed: ' + err.message);
+  } finally {
+    els.btnCreateBackup.disabled = false;
+    els.btnCreateBackup.textContent = '💾 Create backup now';
+  }
+}
+
+async function onImportBackup(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  els.btnImportBackup.value = '';
+
+  try {
+    const backup = await importBackupFromFile(file);
+    showToast(`Backup imported: ${new Date(backup.timestamp).toLocaleString()}`);
+    await renderBackupList();
+  } catch (err) {
+    console.error('Import failed', err);
+    showToast('Import failed: ' + err.message);
+  }
+}
+
+async function onExportAllBackups() {
+  const backups = await getBackups();
+  if (!backups.length) {
+    showToast('No backups to export');
+    return;
+  }
+  exportAllBackupsToFile(backups);
+  showToast('All backups exported');
+}
+
+async function onRestoreBackup(backupId) {
+  const ok = window.confirm(
+    'Restore this backup? This will replace your current shortcuts, settings, notes, and recent history.'
+  );
+  if (!ok) return;
+
+  try {
+    await restoreBackup(backupId);
+    // Reload the page to reflect restored state
+    window.location.reload();
+  } catch (err) {
+    console.error('Restore failed', err);
+    showToast('Restore failed: ' + err.message);
+  }
+}
+
+async function onDeleteBackupItem(backupId) {
+  const ok = window.confirm('Delete this backup?');
+  if (!ok) return;
+
+  try {
+    await deleteBackup(backupId);
+    showToast('Backup deleted');
+    await renderBackupList();
+  } catch (err) {
+    console.error('Delete failed', err);
+    showToast('Delete failed: ' + err.message);
+  }
+}
+
+async function onExportSingleBackup(backupId) {
+  const backups = await getBackups();
+  const backup = backups.find((b) => b.id === backupId);
+  if (!backup) {
+    showToast('Backup not found');
+    return;
+  }
+  exportBackupToFile(backup);
+  showToast('Backup exported');
+}
+
+async function renderBackupList() {
+  const backups = await getBackups();
+  els.backupCount.textContent = `${backups.length} backup${backups.length !== 1 ? 's' : ''}`;
+
+  if (!backups.length) {
+    els.backupList.innerHTML = '';
+    els.backupEmpty.hidden = false;
+    els.backupList.appendChild(els.backupEmpty);
+    return;
+  }
+
+  els.backupEmpty.hidden = true;
+  els.backupList.innerHTML = '';
+
+  for (const backup of backups) {
+    const li = document.createElement('li');
+    li.className = 'backup-item';
+
+    const icon = document.createElement('span');
+    icon.className = 'backup-item-icon';
+    icon.textContent = backup.type === 'auto' ? '🔄' : backup.type === 'import' ? '📥' : '💾';
+
+    const info = document.createElement('div');
+    info.className = 'backup-item-info';
+
+    const date = document.createElement('div');
+    date.className = 'backup-item-date';
+    date.textContent = new Date(backup.timestamp).toLocaleString();
+
+    const meta = document.createElement('div');
+    meta.className = 'backup-item-meta';
+    const sc = backup.data?.shortcuts?.length || 0;
+    const ar = backup.data?.archived?.length || 0;
+    const parts = [];
+    if (sc) parts.push(`${sc} link${sc !== 1 ? 's' : ''}`);
+    if (ar) parts.push(`${ar} archived`);
+    meta.textContent = `${backup.type} · ${parts.join(', ') || 'empty'}`;
+
+    info.append(date, meta);
+
+    const actions = document.createElement('div');
+    actions.className = 'backup-item-actions';
+
+    const restoreBtn = document.createElement('button');
+    restoreBtn.type = 'button';
+    restoreBtn.className = 'btn btn-ghost btn-sm';
+    restoreBtn.textContent = '↩';
+    restoreBtn.title = 'Restore this backup';
+    restoreBtn.addEventListener('click', () => onRestoreBackup(backup.id));
+
+    const exportBtn = document.createElement('button');
+    exportBtn.type = 'button';
+    exportBtn.className = 'btn btn-ghost btn-sm';
+    exportBtn.textContent = '⬇';
+    exportBtn.title = 'Download this backup';
+    exportBtn.addEventListener('click', () => onExportSingleBackup(backup.id));
+
+    const delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.className = 'btn btn-danger btn-sm';
+    delBtn.textContent = '✕';
+    delBtn.title = 'Delete this backup';
+    delBtn.addEventListener('click', () => onDeleteBackupItem(backup.id));
+
+    actions.append(restoreBtn, exportBtn, delBtn);
+    li.append(icon, info, actions);
+    els.backupList.appendChild(li);
   }
 }
 
