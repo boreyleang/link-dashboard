@@ -17,6 +17,26 @@
   --font: "Segoe UI", system-ui, -apple-system, sans-serif;
 }
 
+[data-theme="light"] {
+  --bg: #f3f5fb;
+  --bg-elevated: rgba(20, 24, 48, 0.05);
+  --bg-elevated-hover: rgba(20, 24, 48, 0.09);
+  --border: rgba(20, 24, 48, 0.12);
+  --text: #1a1d2e;
+  --text-muted: rgba(26, 29, 46, 0.6);
+  --primary: #4f6ef7;
+  --primary-strong: #3a55d6;
+  --danger: #e23a5c;
+  --shadow: 0 18px 50px rgba(20, 24, 48, 0.18);
+}
+
+[data-theme="light"] body::before {
+  background:
+    radial-gradient(circle at 15% 20%, rgba(109, 140, 255, 0.22), transparent 35%),
+    radial-gradient(circle at 85% 10%, rgba(167, 109, 255, 0.18), transparent 30%),
+    radial-gradient(circle at 50% 100%, rgba(40, 70, 160, 0.16), transparent 40%);
+}
+
 *,
 *::before,
 *::after {
@@ -203,6 +223,31 @@ body::before {
   color: var(--text);
 }
 
+.search-palette-hint {
+  position: absolute;
+  right: 10px;
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-family: var(--font);
+  cursor: pointer;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.search-palette-hint:hover {
+  background: var(--bg-elevated-hover);
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--primary) 50%, transparent);
+}
+/* Move the clear button left when the palette hint is also shown */
+.search-clear:not([hidden]) { right: 52px; }
+
 /* No-results message */
 .search-empty {
   grid-column: 1 / -1;
@@ -230,8 +275,18 @@ body::before {
   width: 42px;
   height: 42px;
   border-radius: 14px;
-  background: linear-gradient(135deg, #3884ff, #7c3aed);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   box-shadow: 0 10px 24px rgba(79, 110, 247, 0.35);
+}
+
+.brand-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .brand-title {
@@ -397,14 +452,50 @@ body::before {
 }
 
 .tile.dragging {
-  opacity: 0.45;
-  transform: scale(0.98);
+  opacity: 0.4;
+  transform: scale(0.96);
+  cursor: grabbing;
 }
 
+/* Whole-tile highlight (used for group-heading drop target) */
 .tile.drag-over {
   border-color: var(--primary);
   box-shadow: 0 0 0 2px rgba(109, 140, 255, 0.35);
 }
+
+/* Directional drop indicators show exactly where the tile will land */
+.tile.drop-before,
+.tile.drop-after {
+  position: relative;
+}
+.tile.drop-before::before,
+.tile.drop-after::after {
+  content: '';
+  position: absolute;
+  top: 8%;
+  bottom: 8%;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--primary);
+  box-shadow: 0 0 8px 1px rgba(109, 140, 255, 0.6);
+  pointer-events: none;
+  z-index: 5;
+}
+.tile.drop-before::before { left: -7px; }
+.tile.drop-after::after { right: -7px; }
+
+/* List view stacks vertically → indicator becomes a horizontal line */
+.app[data-group-display="list"] .tile.drop-before::before,
+.app[data-group-display="list"] .tile.drop-after::after {
+  top: auto;
+  bottom: auto;
+  left: 4%;
+  right: 4%;
+  width: auto;
+  height: 3px;
+}
+.app[data-group-display="list"] .tile.drop-before::before { top: -6px; }
+.app[data-group-display="list"] .tile.drop-after::after { bottom: -6px; }
 
 .tile-icon-wrap {
   width: var(--tile-size);
@@ -435,6 +526,11 @@ body::before {
   font-weight: 700;
   color: var(--text);
   text-transform: uppercase;
+  display: none;
+}
+
+.tile-fallback.is-visible {
+  display: block;
 }
 
 .tile-icon.is-loaded + .tile-fallback {
@@ -529,6 +625,74 @@ body::before {
   background: rgba(40, 48, 88, 0.98);
   outline: none;
   border-color: var(--primary);
+}
+
+/* Favorite star button — only in unlocked (edit) mode, bottom-left to avoid the
+   selection checkbox (top-left) and the edit button (top-right). */
+.tile-favorite {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  z-index: 3;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(15, 18, 33, 0.88);
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0.45;
+  transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease, transform 0.12s ease;
+  font-size: 0.95rem;
+  line-height: 1;
+  display: none;
+  place-items: center;
+}
+
+/* Show the star only when the dashboard is unlocked */
+.app[data-locked="false"] .tile-favorite {
+  display: grid;
+}
+
+.tile:hover .tile-favorite,
+.tile:focus-within .tile-favorite,
+.tile-favorite:focus-visible {
+  opacity: 1;
+}
+
+.tile-favorite:hover,
+.tile-favorite:focus-visible {
+  background: rgba(40, 48, 88, 0.98);
+  outline: none;
+  transform: scale(1.08);
+}
+
+.tile-favorite.is-active {
+  color: #f59e0b;
+  opacity: 1;
+  border-color: color-mix(in srgb, #f59e0b 50%, transparent);
+}
+
+/* When locked, favorited tiles still show a small static star badge (read-only) */
+.app[data-locked="true"] .tile.is-favorite::after {
+  content: '★';
+  position: absolute;
+  top: 6px;
+  left: 8px;
+  z-index: 2;
+  color: #f59e0b;
+  font-size: 0.85rem;
+  line-height: 1;
+  pointer-events: none;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* Favorites section at the top of the grid */
+.group-section.favorites-section .group-heading-label {
+  color: #f59e0b;
+}
+.group-section.favorites-section .group-heading-line {
+  background: linear-gradient(90deg, color-mix(in srgb, #f59e0b 55%, transparent), transparent);
 }
 
 .empty-state {
@@ -2041,6 +2205,154 @@ body::before {
   z-index: 20;
   font-size: 0.92rem;
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+[data-theme="light"] .toast {
+  background: #ffffff;
+}
+
+.toast-undo {
+  appearance: none;
+  border: 1px solid var(--primary);
+  background: transparent;
+  color: var(--primary-strong);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 4px 12px;
+  border-radius: 999px;
+  transition: background 0.15s, color 0.15s;
+}
+.toast-undo:hover {
+  background: var(--primary);
+  color: #fff;
+}
+
+/* ── Command palette ──────────────────────────────── */
+.command-palette {
+  padding: 0;
+  border: none;
+  background: transparent;
+  max-width: 560px;
+  width: 92vw;
+  margin: 12vh auto auto;
+}
+.command-palette::backdrop {
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+}
+.palette-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  backdrop-filter: blur(20px);
+}
+[data-theme="light"] .palette-card {
+  background: rgba(255, 255, 255, 0.92);
+}
+.palette-input-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.palette-icon {
+  opacity: 0.6;
+  font-size: 1rem;
+}
+.palette-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 1rem;
+  outline: none;
+}
+.palette-input::placeholder { color: var(--text-muted); }
+.palette-hint {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+.palette-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+.palette-empty {
+  margin: 0;
+  padding: 20px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+.palette-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.palette-item.is-active {
+  background: var(--bg-elevated-hover);
+}
+.palette-item-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  font-weight: 700;
+  color: var(--text);
+}
+.palette-item-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.palette-item-icon--action {
+  background: var(--bg-elevated-hover);
+  font-size: 1rem;
+}
+.palette-item-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+.palette-item-label {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.palette-item-sub {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.palette-item-group {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 /* ── Backup & Restore ──────────────────────────────── */

@@ -18,6 +18,7 @@ const zipPath = path.join(rootDir, zipName);
 
 const INCLUDE = [
   'manifest.json',
+  'background.js',
   'icons',
   'lib',
   'newtab',

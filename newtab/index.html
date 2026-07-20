@@ -10,7 +10,9 @@
     <div class="app" id="app">
       <header class="topbar">
         <div class="brand">
-          <span class="brand-mark" aria-hidden="true"></span>
+          <span class="brand-mark" aria-hidden="true">
+            <img src="../icons/icon128.png" alt="" class="brand-logo" />
+          </span>
           <div>
             <h1 class="brand-title">Link Dashboard</h1>
             <p class="brand-sub" id="clock">—</p>
@@ -29,12 +31,16 @@
             aria-label="Search shortcuts"
           />
           <button type="button" class="search-clear" id="search-clear" hidden aria-label="Clear search">✕</button>
+          <button type="button" class="search-palette-hint" id="search-palette-hint" title="Open command palette (Ctrl/Cmd+K)">⌘K</button>
         </div>
 
         <div class="topbar-actions">
           <span class="dev-badge" id="dev-badge" hidden title="Running outside Chrome extension — data uses localStorage">
             Local preview
           </span>
+          <button type="button" class="btn btn-ghost" id="btn-theme" title="Toggle light / dark theme">
+            <span class="btn-icon" id="theme-icon">🌙</span>
+          </button>
           <button type="button" class="btn btn-ghost btn-lock" id="btn-lock" title="Unlock to edit shortcuts">
             <span class="btn-icon" id="lock-icon">🔒</span>
             <span id="lock-label">Locked</span>
@@ -55,9 +61,21 @@
             <span class="btn-icon">📁</span>
             Filter
           </button>
+          <button type="button" class="btn btn-ghost" id="btn-favorites-filter" title="Show favorites only" aria-pressed="false">
+            <span class="btn-icon">⭐</span>
+            Favorites
+          </button>
           <button type="button" class="btn btn-ghost" id="btn-store" title="Link Store — add recommended links" hidden>
             <span class="btn-icon">🛒</span>
             Store
+          </button>
+          <button type="button" class="btn btn-ghost" id="btn-import-export" title="Import / Export shortcuts">
+            <span class="btn-icon">📦</span>
+            Import/Export
+          </button>
+          <button type="button" class="btn btn-ghost" id="btn-backup" title="Backup & Restore">
+            <span class="btn-icon">🔄</span>
+            Backup
           </button>
           <button type="button" class="btn btn-ghost" id="btn-settings" title="Customize dashboard" hidden>
             <span class="btn-icon">⚙</span>
@@ -73,28 +91,7 @@
             <button type="button" class="icon-btn" id="group-filter-modal-close" aria-label="Close">×</button>
           </header>
           <div class="modal-body">
-            <div class="filter-group-checkboxes">
-              <div class="store-checkbox">
-                <input type="checkbox" id="filter-all" name="filter-group" value="all" checked>
-                <label for="filter-all">All (all groups)</label>
-              </div>
-              <div class="store-checkbox">
-                <input type="checkbox" id="filter-social" name="filter-group" value="Social">
-                <label for="filter-social">Social (YouTube, Gmail)</label>
-              </div>
-              <div class="store-checkbox">
-                <input type="checkbox" id="filter-design" name="filter-group" value="Design">
-                <label for="filter-design">Design (GitHub, Figma, Dribbble)</label>
-              </div>
-              <div class="store-checkbox">
-                <input type="checkbox" id="filter-productivity" name="filter-group" value="Productivity">
-                <label for="filter-productivity">Productivity</label>
-              </div>
-              <div class="store-checkbox">
-                <input type="checkbox" id="filter-development" name="filter-group" value="Development">
-                <label for="filter-development">Development</label>
-              </div>
-            </div>
+            <div class="filter-group-checkboxes" id="filter-group-list"></div>
             <p class="panel-help">
               Select which groups to show. Filtering hides shortcuts from groups you don't select.
             </p>
@@ -151,6 +148,9 @@
             <select id="bulk-move-group" class="bulk-group-select" title="Move to group">
               <option value="">Move to group…</option>
             </select>
+            <button type="button" class="btn btn-ghost btn-sm" id="bulk-favorite-btn" title="Toggle favorite for selected">
+              ⭐ Favorite
+            </button>
             <button type="button" class="btn btn-ghost btn-sm" id="bulk-archive-btn" title="Archive selected">
               📦 Archive
             </button>
@@ -240,6 +240,94 @@
       </aside>
     </div>
 
+    <!-- Import / Export dialog -->
+    <dialog class="modal" id="import-export-modal">
+      <div class="modal-card">
+        <header class="modal-header">
+          <h2>📦 Import / Export</h2>
+          <button type="button" class="icon-btn" id="import-export-modal-close" aria-label="Close">×</button>
+        </header>
+        <div class="modal-body">
+          <p class="panel-help">Export your shortcuts to a JSON file, or import shortcuts from a file. Export only includes shortcuts (not settings, notes, or archived items), but import can also pull shortcuts out of a backup file.</p>
+          <div class="import-export-row">
+            <button type="button" class="btn btn-primary btn-sm" id="btn-export-standalone">⬇ Export shortcuts</button>
+            <label class="btn btn-ghost btn-sm import-label" title="Import from JSON file">
+              ⬆ Import shortcuts
+              <input type="file" id="btn-import-file-standalone" accept=".json" hidden />
+            </label>
+          </div>
+        </div>
+        <footer class="modal-footer">
+          <div class="modal-footer-right">
+            <button type="button" class="btn btn-ghost" id="btn-import-export-close">Close</button>
+          </div>
+        </footer>
+      </div>
+    </dialog>
+
+    <!-- Backup & Restore dialog -->
+    <dialog class="modal" id="backup-modal">
+      <div class="modal-card">
+        <header class="modal-header">
+          <h2>🔄 Backup & Restore</h2>
+          <button type="button" class="icon-btn" id="backup-modal-close" aria-label="Close">×</button>
+        </header>
+        <div class="modal-body">
+          <p class="panel-help">Create full backups including shortcuts, settings, notes, and recent history. Restore from any backup to recover your dashboard.</p>
+
+          <div class="backup-config">
+            <label class="field field-check">
+              <input type="checkbox" id="setting-auto-backup-standalone" />
+              <span>Enable auto backup</span>
+            </label>
+
+            <label class="field">
+              <span>Backup interval</span>
+              <select id="setting-backup-interval-standalone" class="backup-select">
+                <option value="hourly">Hourly</option>
+                <option value="daily" selected>Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>Max backups to keep</span>
+              <input type="number" id="setting-max-backups-standalone" min="1" max="50" value="10" class="backup-input" />
+            </label>
+          </div>
+
+          <div class="backup-actions">
+            <button type="button" class="btn btn-primary btn-sm" id="btn-create-backup-standalone">
+              💾 Create backup now
+            </button>
+            <label class="btn btn-ghost btn-sm import-label" title="Import backup from JSON file">
+              ⬆ Import backup
+              <input type="file" id="btn-import-backup-standalone" accept=".json" hidden />
+            </label>
+            <button type="button" class="btn btn-ghost btn-sm" id="btn-export-all-backups-standalone" title="Export all backups">
+              ⬇ Export all backups
+            </button>
+          </div>
+
+          <div class="backup-history">
+            <div class="backup-history-header">
+              <span>Backup History</span>
+              <span class="backup-history-count" id="backup-count-standalone">0 backups</span>
+            </div>
+            <ul class="backup-list" id="backup-list-standalone" aria-label="Backup history">
+              <li class="backup-empty" id="backup-empty-standalone">No backups yet</li>
+            </ul>
+          </div>
+        </div>
+        <footer class="modal-footer">
+          <div class="modal-footer-right">
+            <button type="button" class="btn btn-ghost" id="btn-backup-close">Close</button>
+          </div>
+        </footer>
+      </div>
+    </dialog>
+
     <!-- Add / Edit shortcut modal -->
     <dialog class="modal" id="shortcut-modal">
       <form method="dialog" class="modal-card" id="shortcut-form">
@@ -281,6 +369,11 @@
           <label class="field field-inline">
             <span>Tile color</span>
             <input type="color" id="field-color" value="#4f6ef7" />
+          </label>
+
+          <label class="field field-inline">
+            <span>⭐ Mark as favorite</span>
+            <input type="checkbox" id="field-favorite" />
           </label>
 
           <fieldset class="field">
@@ -571,67 +664,10 @@
             <span>Show recently visited bar</span>
           </label>
 
-          <div class="field">
-            <span>Import / Export</span>
-            <div class="import-export-row">
-              <button type="button" class="btn btn-ghost btn-sm" id="btn-export">⬇ Export shortcuts</button>
-              <label class="btn btn-ghost btn-sm import-label" title="Import from JSON file">
-                ⬆ Import shortcuts
-                <input type="file" id="btn-import-file" accept=".json" hidden />
-              </label>
-            </div>
-          </div>
-
-          <section class="backup-section" aria-label="Backup settings">
-            <div class="backup-header">
-              <span class="backup-title">🔄 Backup & Restore</span>
-            </div>
-
-            <div class="backup-config">
-              <label class="field field-check">
-                <input type="checkbox" id="setting-auto-backup" />
-                <span>Enable auto backup</span>
-              </label>
-
-              <label class="field">
-                <span>Backup interval</span>
-                <select id="setting-backup-interval" class="backup-select">
-                  <option value="hourly">Hourly</option>
-                  <option value="daily" selected>Daily</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly">Monthly</option>
-                </select>
-              </label>
-
-              <label class="field">
-                <span>Max backups to keep</span>
-                <input type="number" id="setting-max-backups" min="1" max="50" value="10" class="backup-input" />
-              </label>
-            </div>
-
-            <div class="backup-actions">
-              <button type="button" class="btn btn-primary btn-sm" id="btn-create-backup">
-                💾 Create backup now
-              </button>
-              <label class="btn btn-ghost btn-sm import-label" title="Import backup from JSON file">
-                ⬆ Import backup
-                <input type="file" id="btn-import-backup" accept=".json" hidden />
-              </label>
-              <button type="button" class="btn btn-ghost btn-sm" id="btn-export-all-backups" title="Export all backups">
-                ⬇ Export all backups
-              </button>
-            </div>
-
-            <div class="backup-history">
-              <div class="backup-history-header">
-                <span>Backup History</span>
-                <span class="backup-history-count" id="backup-count">0 backups</span>
-              </div>
-              <ul class="backup-list" id="backup-list" aria-label="Backup history">
-                <li class="backup-empty" id="backup-empty">No backups yet</li>
-              </ul>
-            </div>
-          </section>
+          <label class="field field-check">
+            <input type="checkbox" id="setting-show-favorites" checked />
+            <span>Show favorites section at top</span>
+          </label>
         </div>
 
         <footer class="modal-footer">
@@ -645,6 +681,27 @@
     </dialog>
 
     <div class="toast" id="toast" hidden role="status"></div>
+
+    <!-- Command palette -->
+    <dialog class="modal command-palette" id="command-palette">
+      <div class="modal-card palette-card">
+        <div class="palette-input-row">
+          <span class="palette-icon" aria-hidden="true">⌘</span>
+          <input
+            type="text"
+            id="palette-input"
+            class="palette-input"
+            placeholder="Search links and actions…"
+            autocomplete="off"
+            spellcheck="false"
+            aria-label="Command palette"
+          />
+          <span class="palette-hint" aria-hidden="true">Esc</span>
+        </div>
+        <ul class="palette-list" id="palette-list" role="listbox" aria-label="Results"></ul>
+        <p class="palette-empty" id="palette-empty" hidden>No results</p>
+      </div>
+    </dialog>
 
     <!-- Groups modal -->
     <dialog class="modal" id="groups-modal">

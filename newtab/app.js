@@ -17,6 +17,8 @@ import {
   removeShortcut,
   reorderShortcuts,
   normalizeOpenIn,
+  toggleFavorite,
+  getFavorites,
 } from '../lib/shortcuts.js';
 import {
   FREE_ICON_STORES,
@@ -37,6 +39,7 @@ const els = {
   toast: document.getElementById('toast'),
   searchInput: document.getElementById('search-input'),
   searchClear: document.getElementById('search-clear'),
+  searchPaletteHint: document.getElementById('search-palette-hint'),
   rightPanel: document.getElementById('right-panel'),
   bookmarksWidget: document.getElementById('bookmarks-widget'),
   bookmarksToggle: document.getElementById('bookmarks-toggle'),
@@ -44,12 +47,37 @@ const els = {
   bookmarksTree: document.getElementById('bookmarks-tree'),
   bookmarksSearch: document.getElementById('bookmarks-search'),
   devBadge: document.getElementById('dev-badge'),
+  btnTheme: document.getElementById('btn-theme'),
+  themeIcon: document.getElementById('theme-icon'),
+  commandPalette: document.getElementById('command-palette'),
+  paletteInput: document.getElementById('palette-input'),
+  paletteList: document.getElementById('palette-list'),
+  paletteEmpty: document.getElementById('palette-empty'),
   btnLock: document.getElementById('btn-lock'),
   lockIcon: document.getElementById('lock-icon'),
   lockLabel: document.getElementById('lock-label'),
   btnAdd: document.getElementById('btn-add'),
   btnArchiveView: document.getElementById('btn-archive-view'),
   btnSettings: document.getElementById('btn-settings'),
+  btnImportExport: document.getElementById('btn-import-export'),
+  btnBackup: document.getElementById('btn-backup'),
+  importExportModal: document.getElementById('import-export-modal'),
+  importExportModalClose: document.getElementById('import-export-modal-close'),
+  btnImportExportClose: document.getElementById('btn-import-export-close'),
+  btnExportStandalone: document.getElementById('btn-export-standalone'),
+  btnImportFileStandalone: document.getElementById('btn-import-file-standalone'),
+  backupModal: document.getElementById('backup-modal'),
+  backupModalClose: document.getElementById('backup-modal-close'),
+  btnBackupClose: document.getElementById('btn-backup-close'),
+  settingAutoBackupStandalone: document.getElementById('setting-auto-backup-standalone'),
+  settingBackupIntervalStandalone: document.getElementById('setting-backup-interval-standalone'),
+  settingMaxBackupsStandalone: document.getElementById('setting-max-backups-standalone'),
+  btnCreateBackupStandalone: document.getElementById('btn-create-backup-standalone'),
+  btnImportBackupStandalone: document.getElementById('btn-import-backup-standalone'),
+  btnExportAllBackupsStandalone: document.getElementById('btn-export-all-backups-standalone'),
+  backupListStandalone: document.getElementById('backup-list-standalone'),
+  backupEmptyStandalone: document.getElementById('backup-empty-standalone'),
+  backupCountStandalone: document.getElementById('backup-count-standalone'),
   shortcutModal: document.getElementById('shortcut-modal'),
   shortcutForm: document.getElementById('shortcut-form'),
   shortcutModalTitle: document.getElementById('shortcut-modal-title'),
@@ -63,9 +91,9 @@ const els = {
   fieldIconSearch: document.getElementById('field-icon-search'),
   fieldColor: document.getElementById('field-color'),
   fieldDescription: document.getElementById('field-description'),
-  fieldShowDescription: document.getElementById('field-show-description'),
   fieldGroup: document.getElementById('field-group'),
   fieldOrder: document.getElementById('field-order'),
+  fieldFavorite: document.getElementById('field-favorite'),
   groupSuggestions: document.getElementById('group-suggestions'),
   btnDelete: document.getElementById('btn-delete'),
   btnArchive: document.getElementById('btn-archive'),
@@ -101,8 +129,8 @@ const els = {
   settingShowBookmarks: document.getElementById('setting-show-bookmarks'),
   settingShowNotes: document.getElementById('setting-show-notes'),
   settingShowRecent: document.getElementById('setting-show-recent'),
-  btnExport: document.getElementById('btn-export'),
-  btnImportFile: document.getElementById('btn-import-file'),
+  settingShowFavorites: document.getElementById('setting-show-favorites'),
+  btnReset: document.getElementById('btn-reset'),
   notesWidget: document.getElementById('notes-widget'),
   notesToggle: document.getElementById('notes-toggle'),
   notesBody: document.getElementById('notes-body'),
@@ -113,12 +141,12 @@ const els = {
   recentToggle: document.getElementById('recent-toggle'),
   recentList: document.getElementById('recent-list'),
   recentClearBtn: document.getElementById('recent-clear-btn'),
-  btnReset: document.getElementById('btn-reset'),
   btnSettingsCancel: document.getElementById('btn-settings-cancel'),
   bulkToolbar: document.getElementById('bulk-toolbar'),
   bulkSelectAll: document.getElementById('bulk-select-all'),
   bulkCount: document.getElementById('bulk-count'),
   bulkMoveGroup: document.getElementById('bulk-move-group'),
+  bulkFavoriteBtn: document.getElementById('bulk-favorite-btn'),
   bulkArchiveBtn: document.getElementById('bulk-archive-btn'),
   bulkDeleteBtn: document.getElementById('bulk-delete-btn'),
   archiveModal: document.getElementById('archive-modal'),
@@ -132,17 +160,14 @@ const els = {
   archiveEmpty: document.getElementById('archive-empty'),
   btnGroups: document.getElementById('btn-groups'),
   btnGroupFilter: document.getElementById('btn-group-filter'),
+  btnFavoritesFilter: document.getElementById('btn-favorites-filter'),
   btnStore: document.getElementById('btn-store'),
   groupsModal: document.getElementById('groups-modal'),
   groupsModalClose: document.getElementById('groups-modal-close'),
   btnGroupsClose: document.getElementById('btn-groups-close'),
   groupFilterModal: document.getElementById('group-filter-modal'),
   groupFilterModalClose: document.getElementById('group-filter-modal-close'),
-  groupFilterAll: document.getElementById('filter-all'),
-  groupFilterSocial: document.getElementById('filter-social'),
-  groupFilterDesign: document.getElementById('filter-design'),
-  groupFilterProductivity: document.getElementById('filter-productivity'),
-  groupFilterDevelopment: document.getElementById('filter-development'),
+  groupFilterList: document.getElementById('filter-group-list'),
   storeModal: document.getElementById('store-modal'),
   storeModalClose: document.getElementById('store-modal-close'),
   storeSearch: document.getElementById('store-search'),
@@ -157,15 +182,6 @@ const els = {
   btnAddGroup: document.getElementById('btn-add-group'),
   groupTabsBar: document.getElementById('group-tabs-bar'),
   groupTabs: document.getElementById('group-tabs'),
-  settingAutoBackup: document.getElementById('setting-auto-backup'),
-  settingBackupInterval: document.getElementById('setting-backup-interval'),
-  settingMaxBackups: document.getElementById('setting-max-backups'),
-  btnCreateBackup: document.getElementById('btn-create-backup'),
-  btnImportBackup: document.getElementById('btn-import-backup'),
-  btnExportAllBackups: document.getElementById('btn-export-all-backups'),
-  backupList: document.getElementById('backup-list'),
-  backupEmpty: document.getElementById('backup-empty'),
-  backupCount: document.getElementById('backup-count'),
 };
 
 /** @type {{ shortcuts: Array, archived: Array, settings: object }} */
@@ -195,6 +211,8 @@ let selectedIds = new Set();
 let activeGroupTab = '';
 /** Current search query string. */
 let searchQuery = '';
+/** When true, only favorites are shown. */
+let favoritesFilter = false;
 
 const ICON_MODES = new Set(['url', 'upload', 'search']);
 const BG_MODES = new Set(['none', 'url', 'upload']);
@@ -214,10 +232,12 @@ async function init() {
   state = await loadState();
   state = await hydrateDurableIcons(state);
   if (!state.archived) state.archived = [];
+  if (!state.settings.theme) state.settings.theme = 'auto';
   // Treat missing locked key as true (locked by default).
   // Use explicit key check so existing unlocked sessions are preserved.
   locked = 'locked' in state.settings ? Boolean(state.settings.locked) : true;
   applySettings(state.settings);
+  applyTheme(state.settings.theme);
   applyLock();
   applyPanelVisibility();
   initBookmarksWidget();
@@ -239,6 +259,8 @@ function applyLock() {
   els.btnArchiveView.hidden = locked;
   els.btnGroups.hidden = locked;
   els.btnStore.hidden = locked;
+  els.btnImportExport.hidden = locked;
+  els.btnBackup.hidden = locked;
   els.btnSettings.hidden = locked;
   // Clear selection when locking
   if (locked) {
@@ -321,16 +343,26 @@ function startClock() {
 
 function bindEvents() {
   els.btnLock.addEventListener('click', onToggleLock);
+  els.btnTheme.addEventListener('click', onToggleTheme);
+  window.matchMedia?.('(prefers-color-scheme: light)').addEventListener('change', () => {
+    if (state.settings.theme === 'auto') applyTheme('auto');
+  });
+  initPalette();
+  els.searchPaletteHint.addEventListener('click', openPalette);
   els.btnAdd.addEventListener('click', () => openShortcutModal());
   els.btnArchiveView.addEventListener('click', openArchiveModal);
   els.btnGroups.addEventListener('click', openGroupsModal);
   els.btnGroupFilter.addEventListener('click', openGroupFilterModal);
+  els.btnFavoritesFilter.addEventListener('click', onToggleFavoritesFilter);
   els.btnStore.addEventListener('click', openStoreModal);
   els.btnSettings.addEventListener('click', openSettingsModal);
+  els.btnImportExport.addEventListener('click', openImportExportModal);
+  els.btnBackup.addEventListener('click', openBackupModal);
 
   // Bulk toolbar
   els.bulkSelectAll.addEventListener('change', onBulkSelectAll);
   els.bulkMoveGroup.addEventListener('change', onBulkMoveGroup);
+  els.bulkFavoriteBtn.addEventListener('click', onBulkFavorite);
   els.bulkArchiveBtn.addEventListener('click', onBulkArchive);
   els.bulkDeleteBtn.addEventListener('click', onBulkDelete);
 
@@ -343,8 +375,6 @@ function bindEvents() {
 
   // Archive button in shortcut modal
   els.btnArchive.addEventListener('click', onArchiveSingleShortcut);
-  els.btnExport.addEventListener('click', onExportShortcuts);
-  els.btnImportFile.addEventListener('change', onImportShortcuts);
 
   els.searchInput.addEventListener('input', () => {
     searchQuery = els.searchInput.value;
@@ -360,6 +390,12 @@ function bindEvents() {
   });
   // Keyboard shortcut: / or Ctrl+F focuses search
   document.addEventListener('keydown', (e) => {
+    if ((e.key === 'k' || e.key === 'K') && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      if (els.commandPalette.open) closePalette();
+      else openPalette();
+      return;
+    }
     if (e.key === 'Escape' && searchQuery) {
       searchQuery = '';
       els.searchInput.value = '';
@@ -438,21 +474,28 @@ function bindEvents() {
   els.btnReset.addEventListener('click', onResetDefaults);
   els.settingColumns.addEventListener('input', syncColumnsLabel);
 
-  // Backup events
-  els.btnCreateBackup.addEventListener('click', onCreateBackup);
-  els.btnImportBackup.addEventListener('change', onImportBackup);
-  els.btnExportAllBackups.addEventListener('click', onExportAllBackups);
-  els.settingAutoBackup.addEventListener('change', onBackupConfigChange);
-  els.settingBackupInterval.addEventListener('change', onBackupConfigChange);
-  els.settingMaxBackups.addEventListener('change', onBackupConfigChange);
+  // Backup events (standalone dialogs)
+  els.importExportModalClose.addEventListener('click', () => els.importExportModal.close());
+  els.btnImportExportClose.addEventListener('click', () => els.importExportModal.close());
+  els.btnExportStandalone.addEventListener('click', onExportShortcuts);
+  els.btnImportFileStandalone.addEventListener('change', onImportShortcuts);
+
+  els.backupModalClose.addEventListener('click', () => els.backupModal.close());
+  els.btnBackupClose.addEventListener('click', () => els.backupModal.close());
+  els.btnCreateBackupStandalone.addEventListener('click', onCreateBackupStandalone);
+  els.btnImportBackupStandalone.addEventListener('change', onImportBackupStandalone);
+  els.btnExportAllBackupsStandalone.addEventListener('click', onExportAllBackupsStandalone);
+  els.settingAutoBackupStandalone.addEventListener('change', onBackupConfigChangeStandalone);
+  els.settingBackupIntervalStandalone.addEventListener('change', onBackupConfigChangeStandalone);
+  els.settingMaxBackupsStandalone.addEventListener('change', onBackupConfigChangeStandalone);
 
   // Group filter modal
   els.groupFilterModalClose.addEventListener('click', () => els.groupFilterModal.close());
   document.getElementById('btn-group-filter-clear').addEventListener('click', onGroupFilterClear);
   document.getElementById('btn-group-filter-apply').addEventListener('click', onGroupFilterApply);
-  for (const cb of els.groupFilterModal.querySelectorAll('input[name="filter-group"]')) {
-    cb.addEventListener('change', onGroupFilterCheck);
-  }
+  els.groupFilterList.addEventListener('change', (e) => {
+    if (e.target.matches('input[name="filter-group"]')) onGroupFilterCheck(e);
+  });
 
   // Store modal
   els.storeModalClose.addEventListener('click', () => els.storeModal.close());
@@ -640,6 +683,34 @@ function highlight(text, query) {
   );
 }
 
+/**
+ * Apply a theme: 'auto' follows prefers-color-scheme, 'light'/'dark' are explicit.
+ * @param {'auto'|'light'|'dark'} theme
+ */
+function applyTheme(theme) {
+  const prefersLight = window.matchMedia?.('(prefers-color-scheme: light)').matches;
+  const resolved = theme === 'auto' ? (prefersLight ? 'light' : 'dark') : theme;
+  if (resolved === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
+    els.themeIcon.textContent = '☀️';
+    els.btnTheme.title = 'Switch to dark theme';
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+    els.themeIcon.textContent = '🌙';
+    els.btnTheme.title = 'Switch to light theme';
+  }
+}
+
+/** Toggle between light and dark, persisting the explicit choice. */
+async function onToggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+  const next = current === 'light' ? 'dark' : 'light';
+  state.settings.theme = next;
+  applyTheme(next);
+  await persist();
+  showToast(next === 'light' ? 'Light theme' : 'Dark theme');
+}
+
 function escHtml(str) {
   return String(str)
     .replace(/&/g, '&amp;')
@@ -677,13 +748,19 @@ function renderGrid() {
     shortcuts = shortcuts.filter((s) => activeGroups.includes(s.group || ''));
   }
 
+  // Favorites-only filter (top-bar toggle)
+  if (favoritesFilter) {
+    shortcuts = shortcuts.filter((s) => s.favorite);
+  }
+
   // Filter shortcuts by search query
   if (q) {
     shortcuts = shortcuts.filter((s) =>
       (s.title || '').toLowerCase().includes(q) ||
       (s.url || '').toLowerCase().includes(q) ||
       (s.description || '').toLowerCase().includes(q) ||
-      (s.group || '').toLowerCase().includes(q)
+      (s.group || '').toLowerCase().includes(q) ||
+      (s.favorite && 'favorite favourite'.includes(q))
     );
   }
 
@@ -701,11 +778,64 @@ function renderGrid() {
     msg.className = 'search-empty';
     if (q) {
       msg.textContent = `No links match "${searchQuery}"`;
+    } else if (favoritesFilter) {
+      msg.textContent = 'No favorites yet — tap the ☆ on a link to add one';
     } else {
       msg.textContent = 'No links in selected groups';
     }
     els.grid.appendChild(msg);
     return;
+  }
+
+  // Flat mode: single ungrouped list sorted by global order
+  if (display === 'flat') {
+    els.groupTabsBar.hidden = true;
+    const ordered = shortcuts
+      .map((item, idx) => ({ item, idx }))
+      .sort((a, b) => (a.item.order ?? 0) - (b.item.order ?? 0) || a.idx - b.idx);
+
+    const section = document.createElement('div');
+    section.className = 'group-section is-active';
+    section.dataset.group = '';
+    const tileGrid = document.createElement('div');
+    tileGrid.className = 'tile-grid';
+    for (const { item } of ordered) {
+      tileGrid.appendChild(createTileElement(item));
+    }
+    section.appendChild(tileGrid);
+    els.grid.appendChild(section);
+    updateBulkToolbar();
+    return;
+  }
+
+  // Favorites section at the top (skip when already filtering to favorites only)
+  if (!favoritesFilter && (state.settings.showFavorites !== false)) {
+    const favs = shortcuts
+      .filter((s) => s.favorite)
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || (a.title || '').localeCompare(b.title || ''));
+    if (favs.length) {
+      const section = document.createElement('div');
+      section.className = 'group-section favorites-section is-active';
+      section.dataset.group = '__favorites__';
+
+      const heading = document.createElement('div');
+      heading.className = 'group-heading';
+      const label = document.createElement('span');
+      label.className = 'group-heading-label';
+      label.textContent = '⭐ Favorites';
+      const line = document.createElement('span');
+      line.className = 'group-heading-line';
+      heading.append(label, line);
+      section.appendChild(heading);
+
+      const tileGrid = document.createElement('div');
+      tileGrid.className = 'tile-grid';
+      for (const item of favs) {
+        tileGrid.appendChild(createTileElement(item));
+      }
+      section.appendChild(tileGrid);
+      els.grid.appendChild(section);
+    }
   }
 
   // Build grouped map
@@ -782,7 +912,9 @@ function renderGrid() {
 
 function createTileElement(item) {
   const tile = document.createElement('div');
-  tile.className = 'tile' + (selectedIds.has(item.id) ? ' is-selected' : '');
+  tile.className = 'tile'
+    + (selectedIds.has(item.id) ? ' is-selected' : '')
+    + (item.favorite ? ' is-favorite' : '');
   tile.dataset.id = item.id;
   tile.draggable = !locked;
   tile.style.setProperty('--tile-color', item.color || '#4f6ef7');
@@ -821,6 +953,23 @@ function createTileElement(item) {
   editBtn.addEventListener('mousedown', (event) => event.stopPropagation());
   editBtn.addEventListener('pointerdown', (event) => event.stopPropagation());
 
+  // Favorite star — always available, even when locked
+  const favBtn = document.createElement('button');
+  favBtn.type = 'button';
+  favBtn.className = 'tile-favorite' + (item.favorite ? ' is-active' : '');
+  favBtn.dataset.id = item.id;
+  favBtn.title = item.favorite ? 'Remove from favorites' : 'Add to favorites';
+  favBtn.setAttribute('aria-pressed', item.favorite ? 'true' : 'false');
+  favBtn.setAttribute('aria-label', `${item.favorite ? 'Unfavorite' : 'Favorite'} ${item.title}`);
+  favBtn.textContent = item.favorite ? '★' : '☆';
+  favBtn.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    onToggleFavorite(item.id);
+  });
+  favBtn.addEventListener('mousedown', (event) => event.stopPropagation());
+  favBtn.addEventListener('pointerdown', (event) => event.stopPropagation());
+
   const link = document.createElement('a');
   link.className = 'tile-link';
   link.href = item.url;
@@ -845,15 +994,28 @@ function createTileElement(item) {
   if (iconSrc) {
     img.src = iconSrc;
     img.onload = () => img.classList.add('is-loaded');
+    let retried = false;
     img.onerror = () => {
+      if (retried) {
+        img.hidden = true;
+        fallback.classList.add('is-visible');
+        return;
+      }
       const host = (() => { try { return new URL(item.url).hostname; } catch { return null; } })();
-      if (host && !img.src.includes('google.com/s2/favicons')) {
+      if (host) {
+        retried = true;
         img.src = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=128`;
+      } else {
+        img.hidden = true;
+        fallback.classList.add('is-visible');
       }
     };
     img.decode()
       .then(() => img.classList.add('is-loaded'))
       .catch(() => {});
+  } else {
+    img.hidden = true;
+    fallback.classList.add('is-visible');
   }
 
   iconWrap.append(img, fallback);
@@ -879,7 +1041,7 @@ function createTileElement(item) {
     link.appendChild(desc);
   }
 
-  tile.append(checkWrap, editBtn, link);
+  tile.append(checkWrap, favBtn, editBtn, link);
   return tile;
 }
 
@@ -907,6 +1069,7 @@ function openShortcutModal(item = null) {
   els.fieldDescription.value = item?.description || '';
   els.fieldGroup.value = item?.group || '';
   els.fieldOrder.value = String(item?.order ?? 0);
+  els.fieldFavorite.checked = Boolean(item?.favorite);
 
   // Populate group autocomplete from all existing groups
   const existingGroups = [...new Set(
@@ -1141,6 +1304,7 @@ async function onSaveShortcut(event) {
     description: els.fieldDescription.value.trim(),
     group: els.fieldGroup.value.trim(),
     order: Number(els.fieldOrder.value) || 0,
+    favorite: els.fieldFavorite.checked,
   };
 
   if (!payload.url.trim()) {
@@ -1172,14 +1336,20 @@ async function onDeleteShortcut() {
   const id = els.fieldId.value;
   if (!id) return;
 
-  const ok = window.confirm('Permanently delete this shortcut?');
-  if (!ok) return;
+  const item = state.shortcuts.find((s) => s.id === id);
+  if (!item) return;
 
+  const prev = state.shortcuts;
   state.shortcuts = removeShortcut(state.shortcuts, id);
   await persist();
   renderGrid();
   els.shortcutModal.close();
-  showToast('Shortcut deleted');
+  showToastUndo(`"${item.title}" deleted`, async () => {
+    state.shortcuts = prev;
+    await persist();
+    renderGrid();
+    showToast('Restored');
+  });
 }
 
 // ── Archive single shortcut (from edit modal) ─────────────
@@ -1198,7 +1368,13 @@ async function onArchiveSingleShortcut() {
   await persist();
   renderGrid();
   els.shortcutModal.close();
-  showToast(`"${item.title}" archived`);
+  showToastUndo(`"${item.title}" archived`, async () => {
+    state.archived = (state.archived || []).filter((a) => a.id !== id);
+    state.shortcuts = [...state.shortcuts, { ...item }];
+    await persist();
+    renderGrid();
+    showToast('Restored');
+  });
 }
 
 // ── Bulk action helpers ────────────────────────────────────
@@ -1217,6 +1393,11 @@ function updateBulkToolbar() {
   els.bulkMoveGroup.innerHTML = '<option value="">Move to group…</option>'
     + groups.map((g) => `<option value="${escHtml(g)}">${escHtml(g)}</option>`).join('')
     + '<option value="__ungroup__">— Remove from group</option>';
+
+  // Favorite button reflects whether all selected are already favorited
+  const selected = state.shortcuts.filter((s) => selectedIds.has(s.id));
+  const allFav = selected.length > 0 && selected.every((s) => s.favorite);
+  els.bulkFavoriteBtn.textContent = allFav ? '☆ Unfavorite' : '⭐ Favorite';
 }
 
 function onBulkSelectAll() {
@@ -1244,21 +1425,57 @@ async function onBulkMoveGroup() {
   els.bulkMoveGroup.value = '';
 }
 
+async function onToggleFavorite(id) {
+  state.shortcuts = toggleFavorite(state.shortcuts, id);
+  const nowFav = state.shortcuts.find((s) => s.id === id)?.favorite;
+  await persist();
+  renderGrid();
+  showToast(nowFav ? 'Added to favorites' : 'Removed from favorites');
+}
+
+function onToggleFavoritesFilter() {
+  favoritesFilter = !favoritesFilter;
+  els.btnFavoritesFilter.classList.toggle('is-active', favoritesFilter);
+  els.btnFavoritesFilter.setAttribute('aria-pressed', favoritesFilter ? 'true' : 'false');
+  renderGrid();
+  showToast(favoritesFilter ? 'Showing favorites only' : 'Showing all links');
+}
+
+async function onBulkFavorite() {
+  if (!selectedIds.size) { showToast('Select links first'); return; }
+  const selected = state.shortcuts.filter((s) => selectedIds.has(s.id));
+  const allFav = selected.every((s) => s.favorite);
+  const value = !allFav;
+  state.shortcuts = state.shortcuts.map((s) =>
+    selectedIds.has(s.id) ? { ...s, favorite: value } : s
+  );
+  await persist();
+  renderGrid();
+  updateBulkToolbar();
+  showToast(value ? 'Added to favorites' : 'Removed from favorites');
+}
+
 async function onBulkArchive() {
   if (!selectedIds.size) { showToast('Select links first'); return; }
   const toArchive = state.shortcuts.filter((s) => selectedIds.has(s.id));
   const now = new Date().toISOString();
-  state.archived = [
-    ...toArchive.map((s) => ({ ...s, archivedAt: now })),
-    ...(state.archived || []),
-  ];
+  const archivedEntries = toArchive.map((s) => ({ ...s, archivedAt: now }));
+  state.archived = [...archivedEntries, ...(state.archived || [])];
   state.shortcuts = state.shortcuts.filter((s) => !selectedIds.has(s.id));
   const n = toArchive.length;
   selectedIds.clear();
   await persist();
   renderGrid();
   updateBulkToolbar();
-  showToast(`${n} link${n !== 1 ? 's' : ''} archived`);
+  showToastUndo(`${n} link${n !== 1 ? 's' : ''} archived`, async () => {
+    const ids = new Set(archivedEntries.map((a) => a.id));
+    state.archived = (state.archived || []).filter((a) => !ids.has(a.id));
+    state.shortcuts = [...state.shortcuts, ...archivedEntries];
+    await persist();
+    renderGrid();
+    updateBulkToolbar();
+    showToast('Restored');
+  });
 }
 
 async function onBulkDelete() {
@@ -1266,12 +1483,20 @@ async function onBulkDelete() {
   const n = selectedIds.size;
   const ok = window.confirm(`Permanently delete ${n} link${n !== 1 ? 's' : ''}?`);
   if (!ok) return;
+  const removed = state.shortcuts.filter((s) => selectedIds.has(s.id));
+  const prev = state.shortcuts;
   state.shortcuts = state.shortcuts.filter((s) => !selectedIds.has(s.id));
   selectedIds.clear();
   await persist();
   renderGrid();
   updateBulkToolbar();
-  showToast(`${n} link${n !== 1 ? 's' : ''} deleted`);
+  showToastUndo(`${n} link${n !== 1 ? 's' : ''} deleted`, async () => {
+    state.shortcuts = prev;
+    await persist();
+    renderGrid();
+    updateBulkToolbar();
+    showToast('Restored');
+  });
 }
 
 // ── Archive modal ──────────────────────────────────────────
@@ -1398,6 +1623,7 @@ function openSettingsModal() {
   els.settingShowBookmarks.checked = Boolean(settings.showBookmarks);
   els.settingShowNotes.checked = Boolean(settings.showNotes);
   els.settingShowRecent.checked = settings.showRecent !== false;
+  els.settingShowFavorites.checked = settings.showFavorites !== false;
   syncColumnsLabel();
 
   for (const input of els.settingsForm.querySelectorAll('input[name="tile-size"]')) {
@@ -1416,8 +1642,6 @@ function openSettingsModal() {
   }
 
   updateBgPreview();
-  loadBackupConfig();
-  renderBackupList();
   els.settingsModal.showModal();
 }
 
@@ -1515,6 +1739,7 @@ async function onSaveSettings(event) {
     showBookmarks: els.settingShowBookmarks.checked,
     showNotes: els.settingShowNotes.checked,
     showRecent: els.settingShowRecent.checked,
+    showFavorites: els.settingShowFavorites.checked,
   };
 
   applySettings(state.settings);
@@ -1526,14 +1751,24 @@ async function onSaveSettings(event) {
 }
 
 async function onResetDefaults() {
-  const ok = window.confirm('Reset shortcuts and settings to defaults?');
+  const ok = window.confirm(
+    'Reset shortcuts and settings to defaults?\n\n' +
+    'A backup of your current data will be created automatically so you can restore it later.'
+  );
   if (!ok) return;
+
+  try {
+    const { createBackup } = await import('../lib/backup.js');
+    await createBackup('auto-reset');
+  } catch (err) {
+    console.warn('Failed to create backup before reset:', err);
+  }
 
   state = await resetState();
   applySettings(state.settings);
   renderGrid();
   els.settingsModal.close();
-  showToast('Defaults restored');
+  showToast('Defaults restored (backup created)');
 }
 
 // ── Groups modal ────────────────────────────────────────────
@@ -1740,18 +1975,63 @@ async function onGroupDisplayChange(event) {
 /** Currently selected groups for filtering. Empty = show all. */
 let filterGroups = [];
 
-function openGroupFilterModal() {
-  // Load current filter from settings
-  filterGroups = [...(state.settings.filterGroups || [])];
+/** Cache of group names available in the current filter modal. */
+let availableFilterGroups = [];
+
+function getAvailableGroups() {
+  const groups = new Set(
+    state.shortcuts.map((s) => (s.group || '').trim()).filter(Boolean)
+  );
+  const order = state.settings.groupOrder || [];
+  return [...groups].sort((a, b) => {
+    const ia = order.indexOf(a);
+    const ib = order.indexOf(b);
+    if (ia !== -1 && ib !== -1) return ia - ib;
+    if (ia !== -1) return -1;
+    if (ib !== -1) return 1;
+    return a.localeCompare(b);
+  });
+}
+
+function renderGroupFilterCheckboxes() {
+  availableFilterGroups = getAvailableGroups();
   const allChecked = filterGroups.length === 0;
 
-  // Set checkbox states
-  els.groupFilterAll.checked = allChecked;
-  els.groupFilterSocial.checked = allChecked || filterGroups.includes('Social');
-  els.groupFilterDesign.checked = allChecked || filterGroups.includes('Design');
-  els.groupFilterProductivity.checked = allChecked || filterGroups.includes('Productivity');
-  els.groupFilterDevelopment.checked = allChecked || filterGroups.includes('Development');
+  const escapeAttr = (v) => String(v).replace(/"/g, '&quot;');
+  const escapeHtml = (v) =>
+    String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+  let html = `
+    <div class="store-checkbox">
+      <input type="checkbox" id="filter-all" name="filter-group" value="all" ${allChecked ? 'checked' : ''}>
+      <label for="filter-all">All (all groups)</label>
+    </div>`;
+
+  if (availableFilterGroups.length === 0) {
+    html += `<p class="panel-help">No groups yet. Assign groups to your shortcuts to filter them here.</p>`;
+  } else {
+    for (const g of availableFilterGroups) {
+      const count = state.shortcuts.filter((s) => (s.group || '') === g).length;
+      const id = `filter-grp-${escapeAttr(g)}`;
+      const checked = allChecked || filterGroups.includes(g);
+      html += `
+        <div class="store-checkbox">
+          <input type="checkbox" id="${escapeAttr(id)}" name="filter-group" value="${escapeAttr(g)}" ${checked ? 'checked' : ''}>
+          <label for="${escapeAttr(id)}">${escapeHtml(g)} (${count})</label>
+        </div>`;
+    }
+  }
+
+  els.groupFilterList.innerHTML = html;
+  els.groupFilterAll = document.getElementById('filter-all');
+}
+
+function openGroupFilterModal() {
+  // Load current filter from settings, dropping groups that no longer exist
+  const existing = new Set(getAvailableGroups());
+  filterGroups = [...(state.settings.filterGroups || [])].filter((g) => existing.has(g));
+
+  renderGroupFilterCheckboxes();
   updateFilterSummary();
   els.groupFilterModal.showModal();
 }
@@ -1759,8 +2039,9 @@ function openGroupFilterModal() {
 function updateFilterSummary() {
   const summary = document.getElementById('filter-summary');
   if (!summary) return;
+  const allChecked = els.groupFilterAll && els.groupFilterAll.checked;
   if (filterGroups.length === 0) {
-    summary.textContent = 'Showing all groups.';
+    summary.textContent = allChecked ? 'Showing all groups.' : 'No groups selected — nothing will be shown.';
   } else {
     summary.textContent = `Filtering: ${filterGroups.join(', ')}`;
   }
@@ -1768,16 +2049,23 @@ function updateFilterSummary() {
 
 function onGroupFilterCheck(event) {
   const val = event.target.value;
-  const groups = ['Social', 'Design', 'Productivity', 'Development'];
+  const groups = availableFilterGroups;
 
   if (val === 'all') {
     if (event.target.checked) {
-      // "All" checked → check every group too
+      // "All" checked → check every group too (show all)
       filterGroups = [];
-      els.groupFilterSocial.checked = true;
-      els.groupFilterDesign.checked = true;
-      els.groupFilterProductivity.checked = true;
-      els.groupFilterDevelopment.checked = true;
+      for (const cb of els.groupFilterList.querySelectorAll('input[value]')) {
+        if (cb.value !== 'all') cb.checked = true;
+      }
+    } else {
+      // "All" unchecked → uncheck every group (select none)
+      filterGroups = [];
+      for (const cb of els.groupFilterList.querySelectorAll('input[value]')) {
+        if (cb.value !== 'all') cb.checked = false;
+      }
+      updateFilterSummary();
+      return;
     }
   } else {
     // Unchecking a specific group: collect all OTHER checked groups
@@ -1814,11 +2102,9 @@ async function onGroupFilterApply() {
 
 function onGroupFilterClear() {
   filterGroups = [];
-  els.groupFilterAll.checked = true;
-  els.groupFilterSocial.checked = true;
-  els.groupFilterDesign.checked = true;
-  els.groupFilterProductivity.checked = true;
-  els.groupFilterDevelopment.checked = true;
+  for (const cb of els.groupFilterList.querySelectorAll('input[value]')) {
+    cb.checked = true;
+  }
   updateFilterSummary();
 }
 
@@ -1846,18 +2132,40 @@ function onDragStart(event) {
   event.dataTransfer.setData('text/plain', dragId);
 }
 
+function clearDropIndicators() {
+  for (const el of els.grid.querySelectorAll('.drag-over, .drop-before, .drop-after')) {
+    el.classList.remove('drag-over', 'drop-before', 'drop-after');
+  }
+}
+
+function isAfterTarget(event, tile) {
+  // Decide before/after based on pointer position relative to tile center.
+  // Use the dominant axis of the current layout (row-based grid vs. list column).
+  const rect = tile.getBoundingClientRect();
+  const isList = els.app.dataset.groupDisplay === 'list';
+  if (isList) {
+    return event.clientY > rect.top + rect.height / 2;
+  }
+  return event.clientX > rect.left + rect.width / 2;
+}
+
 function onDragOver(event) {
   if (locked) return;
   // Accept drop on a tile OR on a group heading (to move to that group)
   const target = event.target.closest('.tile, .group-heading');
   if (!target || (target.classList.contains('tile') && target.dataset.id === dragId)) return;
   event.preventDefault();
-
-  for (const el of els.grid.querySelectorAll('.drag-over')) {
-    el.classList.remove('drag-over');
-  }
-  target.classList.add('drag-over');
   event.dataTransfer.dropEffect = 'move';
+
+  clearDropIndicators();
+
+  if (target.classList.contains('group-heading')) {
+    target.classList.add('drag-over');
+    return;
+  }
+
+  // Show a directional indicator line so the drop position is obvious
+  target.classList.add(isAfterTarget(event, target) ? 'drop-after' : 'drop-before');
 }
 
 async function onDrop(event) {
@@ -1870,33 +2178,37 @@ async function onDrop(event) {
   const fromItem = state.shortcuts.find((s) => s.id === dragId);
   if (!fromItem) return;
 
+  const flat = (state.settings.groupDisplay || 'grid') === 'flat';
   let toGroup = fromItem.group || '';
-  let insertBeforeId = null;
+  let anchorId = null;
+  let dropAfter = false;
 
   if (target.classList.contains('group-heading')) {
     // Dropped onto a group heading → move to that group, place at end
     toGroup = target.dataset.group || '';
   } else {
-    // Dropped onto a tile → inherit that tile's group, insert before it
+    // Dropped onto a tile → inherit that tile's group, insert before/after it
     const toItem = state.shortcuts.find((s) => s.id === target.dataset.id);
     if (!toItem || toItem.id === dragId) return;
-    toGroup = toItem.group || '';
-    insertBeforeId = toItem.id;
+    // In flat mode groups are ignored — keep the dragged item's own group
+    toGroup = flat ? (fromItem.group || '') : (toItem.group || '');
+    anchorId = toItem.id;
+    dropAfter = isAfterTarget(event, target);
   }
 
-  // Build the new ordered sequence for the target group
-  const groupItems = state.shortcuts
-    .filter((s) => (s.group || '') === toGroup)
+  // Build the ordered sequence we insert into.
+  // Flat mode reorders the whole list; grouped modes reorder within the group.
+  const sequence = (flat ? state.shortcuts.slice() : state.shortcuts.filter((s) => (s.group || '') === toGroup))
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
-  // Remove the dragged item from this sequence (may not be present if cross-group move)
-  const without = groupItems.filter((s) => s.id !== dragId);
+  // Remove the dragged item from this sequence
+  const without = sequence.filter((s) => s.id !== dragId);
 
-  // Insert at the right position
+  // Insert at the right position (before or after the anchor tile)
   let insertIdx = without.length; // default: end
-  if (insertBeforeId) {
-    const idx = without.findIndex((s) => s.id === insertBeforeId);
-    if (idx >= 0) insertIdx = idx;
+  if (anchorId) {
+    const idx = without.findIndex((s) => s.id === anchorId);
+    if (idx >= 0) insertIdx = dropAfter ? idx + 1 : idx;
   }
   without.splice(insertIdx, 0, fromItem);
 
@@ -1913,15 +2225,17 @@ async function onDrop(event) {
     return s;
   });
 
+  clearDropIndicators();
   await persist();
   renderGrid();
 }
 
 function onDragEnd() {
   dragId = null;
-  for (const el of els.grid.querySelectorAll('.dragging, .drag-over')) {
-    el.classList.remove('dragging', 'drag-over');
+  for (const el of els.grid.querySelectorAll('.dragging')) {
+    el.classList.remove('dragging');
   }
+  clearDropIndicators();
 }
 
 async function persist() {
@@ -1944,6 +2258,146 @@ async function persist() {
   }
 }
 
+// ── Command palette (Ctrl/Cmd+K) ──────────────────────────
+
+let paletteItems = [];
+let paletteActive = -1;
+
+/** Build the list of commands: shortcuts (navigate) + static actions. */
+function buildPaletteItems(query) {
+  const q = query.trim().toLowerCase();
+  const items = [];
+
+  // Static actions
+  const actions = [
+    { type: 'action', label: 'Add link', icon: '➕', run: () => { if (locked) els.btnLock.click(); openShortcutModal(); } },
+    { type: 'action', label: 'Customize dashboard', icon: '⚙', run: openSettingsModal },
+    { type: 'action', label: 'Manage groups', icon: '⊞', run: openGroupsModal },
+    { type: 'action', label: 'Filter by group', icon: '📁', run: openGroupFilterModal },
+    { type: 'action', label: 'Toggle favorites filter', icon: '⭐', run: onToggleFavoritesFilter },
+    { type: 'action', label: 'View archive', icon: '📦', run: openArchiveModal },
+    { type: 'action', label: 'Backup & Restore', icon: '🔄', run: openBackupModal },
+    { type: 'action', label: 'Import / Export', icon: '📦', run: openImportExportModal },
+    { type: 'action', label: 'Toggle theme', icon: '🌓', run: onToggleTheme },
+  ];
+
+  for (const a of actions) {
+    if (!q || a.label.toLowerCase().includes(q)) {
+      items.push({ ...a, group: 'Actions' });
+    }
+  }
+
+  // Shortcuts
+  for (const s of state.shortcuts) {
+    const hay = `${s.title} ${s.url} ${s.description || ''} ${s.group || ''}`.toLowerCase();
+    if (!q || hay.includes(q)) {
+      items.push({
+        type: 'shortcut',
+        id: s.id,
+        label: s.title,
+        sub: s.url,
+        icon: s.icon,
+        color: s.color,
+        group: 'Links',
+      });
+    }
+  }
+
+  return items;
+}
+
+function renderPalette(query) {
+  paletteItems = buildPaletteItems(query);
+  paletteActive = paletteItems.length ? 0 : -1;
+  els.paletteList.innerHTML = '';
+  els.paletteEmpty.hidden = paletteItems.length > 0;
+
+  paletteItems.forEach((item, i) => {
+    const li = document.createElement('li');
+    li.className = 'palette-item' + (i === paletteActive ? ' is-active' : '');
+    li.dataset.index = String(i);
+    li.setAttribute('role', 'option');
+
+    let iconHtml;
+    if (item.type === 'shortcut' && item.icon) {
+      iconHtml = `<span class="palette-item-icon" style="background:${escHtml(item.color || 'var(--primary)')}33">
+        <img src="${escHtml(item.icon)}" alt="" onerror="this.style.display='none'" /></span>`;
+    } else if (item.type === 'shortcut') {
+      iconHtml = `<span class="palette-item-icon" style="background:${escHtml(item.color || 'var(--primary)')}33">${escHtml((item.label || '?')[0])}</span>`;
+    } else {
+      iconHtml = `<span class="palette-item-icon palette-item-icon--action">${item.icon || '⚡'}</span>`;
+    }
+
+    li.innerHTML = `
+      ${iconHtml}
+      <span class="palette-item-text">
+        <span class="palette-item-label">${escHtml(item.label)}</span>
+        ${item.sub ? `<span class="palette-item-sub">${escHtml(item.sub)}</span>` : ''}
+      </span>
+      <span class="palette-item-group">${escHtml(item.group)}</span>`;
+
+    li.addEventListener('click', () => runPaletteItem(i));
+    li.addEventListener('mousemove', () => setPaletteActive(i));
+    els.paletteList.appendChild(li);
+  });
+}
+
+function setPaletteActive(i) {
+  if (i < 0 || i >= paletteItems.length) return;
+  paletteActive = i;
+  for (const el of els.paletteList.children) {
+    el.classList.toggle('is-active', Number(el.dataset.index) === i);
+  }
+  els.paletteList.children[i]?.scrollIntoView({ block: 'nearest' });
+}
+
+function runPaletteItem(i) {
+  const item = paletteItems[i];
+  if (!item) return;
+  closePalette();
+  if (item.type === 'shortcut') {
+    const s = state.shortcuts.find((x) => x.id === item.id);
+    if (!s) return;
+    window.open(s.url, s.openIn === 'same-tab' ? '_self' : '_blank', 'noopener');
+    recordVisit(s);
+  } else if (item.type === 'action') {
+    item.run();
+  }
+}
+
+function openPalette() {
+  els.paletteInput.value = '';
+  renderPalette('');
+  els.commandPalette.showModal();
+  setTimeout(() => els.paletteInput.focus(), 0);
+}
+
+function closePalette() {
+  els.commandPalette.close();
+}
+
+function initPalette() {
+  els.paletteInput.addEventListener('input', () => renderPalette(els.paletteInput.value));
+  els.commandPalette.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setPaletteActive(Math.min(paletteActive + 1, paletteItems.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setPaletteActive(Math.max(paletteActive - 1, 0));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      runPaletteItem(paletteActive);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      closePalette();
+    }
+  });
+  els.commandPalette.addEventListener('click', (e) => {
+    if (e.target === els.commandPalette) closePalette();
+  });
+}
+
 function showToast(message) {
   els.toast.hidden = false;
   els.toast.textContent = message;
@@ -1951,6 +2405,36 @@ function showToast(message) {
   toastTimer = setTimeout(() => {
     els.toast.hidden = true;
   }, 2200);
+}
+
+/**
+ * Show a toast with an "Undo" action button.
+ * @param {string} message
+ * @param {() => void | Promise<void>} onUndo
+ */
+function showToastUndo(message, onUndo) {
+  els.toast.hidden = false;
+  els.toast.replaceChildren();
+
+  const text = document.createElement('span');
+  text.textContent = message;
+  els.toast.appendChild(text);
+
+  const undoBtn = document.createElement('button');
+  undoBtn.type = 'button';
+  undoBtn.className = 'toast-undo';
+  undoBtn.textContent = 'Undo';
+  undoBtn.addEventListener('click', async () => {
+    clearTimeout(toastTimer);
+    els.toast.hidden = true;
+    await onUndo();
+  });
+  els.toast.appendChild(undoBtn);
+
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    els.toast.hidden = true;
+  }, 6000);
 }
 
 function toColorInput(value) {
@@ -2030,7 +2514,10 @@ function onGridTileNavigate(event) {
   if (!tile) return;
   const item = state.shortcuts.find((s) => s.id === tile.dataset.id);
   if (!item) return;
+  recordVisit(item);
+}
 
+function recordVisit(item) {
   // Record visit in localStorage (keep last 20, deduplicated by id)
   const key = 'linkDashboard_recent';
   let recent = [];
@@ -2111,7 +2598,27 @@ function renderRecentBar() {
 let storeActiveCategory = 'All';
 let storeSelectedIds = new Set();
 
-const STORE_CATEGORIES = ['All', 'Social', 'Design', 'Productivity', 'Development', 'News', 'Entertainment'];
+const STORE_CATEGORIES = [
+  'All',
+  'AI & Productivity',
+  'Email & Office',
+  'Communication',
+  'Source Code',
+  'Developer Tools',
+  'Search',
+  'Social Media',
+  'Video & Streaming',
+  'Shopping',
+  'Finance',
+  'News',
+  'Maps & Travel',
+  'Learning',
+  'Design',
+  'Password Managers',
+  'Cloud Platforms',
+  'DevOps',
+  'Entertainment',
+];
 
 function openStoreModal() {
   storeSelectedIds.clear();
@@ -2251,10 +2758,15 @@ async function onStoreAddSelected() {
 // ── Import / Export ───────────────────────────────────────
 
 function onExportShortcuts() {
+  const shortcuts = Array.isArray(state.shortcuts) ? state.shortcuts : [];
+  if (!shortcuts.length) {
+    showToast('No shortcuts to export');
+    return;
+  }
   const data = {
     version: 1,
     exportedAt: new Date().toISOString(),
-    shortcuts: state.shortcuts,
+    shortcuts,
   };
   const json = JSON.stringify(data, null, 2);
   const blob = new Blob([json], { type: 'application/json' });
@@ -2267,20 +2779,40 @@ function onExportShortcuts() {
   showToast('Shortcuts exported');
 }
 
+function extractShortcuts(data) {
+  if (Array.isArray(data)) return data;
+  if (!data || typeof data !== 'object') return null;
+
+  if (Array.isArray(data.shortcuts)) return data.shortcuts;
+
+  if (Array.isArray(data.backups) && data.backups.length) {
+    const latest = data.backups.reduce((a, b) =>
+      new Date(b.timestamp || 0) >= new Date(a.timestamp || 0) ? b : a
+    );
+    if (Array.isArray(latest?.data?.shortcuts)) return latest.data.shortcuts;
+  }
+
+  if (Array.isArray(data.data?.shortcuts)) return data.data.shortcuts;
+
+  return null;
+}
+
 async function onImportShortcuts(event) {
   const file = event.target.files?.[0];
   if (!file) return;
-  // Reset input so the same file can be re-selected later
-  els.btnImportFile.value = '';
+  event.target.value = '';
 
   try {
     const text = await file.text();
     const data = JSON.parse(text);
 
     // Accept both { shortcuts: [...] } and a raw array
-    const incoming = Array.isArray(data) ? data : data.shortcuts;
-    if (!Array.isArray(incoming) || incoming.length === 0) {
-      throw new Error('No shortcuts found in file.');
+    const incoming = extractShortcuts(data);
+    if (!Array.isArray(incoming)) {
+      throw new Error('Could not find any shortcuts in this file.');
+    }
+    if (incoming.length === 0) {
+      throw new Error('The file contains an empty shortcuts list.');
     }
 
     // Validate each entry has at minimum a url
@@ -2309,6 +2841,7 @@ async function onImportShortcuts(event) {
           description: s.description || '',
           group: s.group || '',
           order: s.order ?? 0,
+          favorite: Boolean(s.favorite),
         },
       ];
       existingUrls.add(s.url);
@@ -2329,67 +2862,76 @@ async function onImportShortcuts(event) {
   }
 }
 
-// ── Backup & Restore ────────────────────────────────────
+// ── Import / Export dialog ──────────────────────────────
 
-async function loadBackupConfig() {
-  const config = await getConfig();
-  els.settingAutoBackup.checked = config.autoBackup;
-  els.settingBackupInterval.value = config.interval;
-  els.settingMaxBackups.value = config.maxBackups;
+function openImportExportModal() {
+  els.importExportModal.showModal();
 }
 
-async function onBackupConfigChange() {
+// ── Backup & Restore dialog ─────────────────────────────
+
+function openBackupModal() {
+  loadBackupConfigStandalone();
+  renderBackupListStandalone();
+  els.backupModal.showModal();
+}
+
+async function loadBackupConfigStandalone() {
+  const config = await getConfig();
+  els.settingAutoBackupStandalone.checked = config.autoBackup;
+  els.settingBackupIntervalStandalone.value = config.interval;
+  els.settingMaxBackupsStandalone.value = config.maxBackups;
+}
+
+async function onBackupConfigChangeStandalone() {
   const config = {
-    autoBackup: els.settingAutoBackup.checked,
-    interval: els.settingBackupInterval.value,
-    maxBackups: Math.max(1, Math.min(50, Number(els.settingMaxBackups.value) || 10)),
+    autoBackup: els.settingAutoBackupStandalone.checked,
+    interval: els.settingBackupIntervalStandalone.value,
+    maxBackups: Math.max(1, Math.min(50, Number(els.settingMaxBackupsStandalone.value) || 10)),
   };
   await updateConfig(config);
 
-  // Notify service worker to reschedule alarm
   if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
     try {
       chrome.runtime.sendMessage({ type: 'scheduleAutoBackup' });
-    } catch {
-      // Service worker may not be available in dev mode
-    }
+    } catch {}
   }
 
   showToast(`Auto backup ${config.autoBackup ? 'enabled' : 'disabled'}`);
 }
 
-async function onCreateBackup() {
-  els.btnCreateBackup.disabled = true;
-  els.btnCreateBackup.textContent = 'Backing up…';
+async function onCreateBackupStandalone() {
+  els.btnCreateBackupStandalone.disabled = true;
+  els.btnCreateBackupStandalone.textContent = 'Backing up…';
   try {
     const backup = await createBackup('manual');
     showToast(`Backup created: ${new Date(backup.timestamp).toLocaleString()}`);
-    await renderBackupList();
+    await renderBackupListStandalone();
   } catch (err) {
     console.error('Backup failed', err);
     showToast('Backup failed: ' + err.message);
   } finally {
-    els.btnCreateBackup.disabled = false;
-    els.btnCreateBackup.textContent = '💾 Create backup now';
+    els.btnCreateBackupStandalone.disabled = false;
+    els.btnCreateBackupStandalone.textContent = '💾 Create backup now';
   }
 }
 
-async function onImportBackup(event) {
+async function onImportBackupStandalone(event) {
   const file = event.target.files?.[0];
   if (!file) return;
-  els.btnImportBackup.value = '';
+  els.btnImportBackupStandalone.value = '';
 
   try {
     const backup = await importBackupFromFile(file);
     showToast(`Backup imported: ${new Date(backup.timestamp).toLocaleString()}`);
-    await renderBackupList();
+    await renderBackupListStandalone();
   } catch (err) {
     console.error('Import failed', err);
     showToast('Import failed: ' + err.message);
   }
 }
 
-async function onExportAllBackups() {
+async function onExportAllBackupsStandalone() {
   const backups = await getBackups();
   if (!backups.length) {
     showToast('No backups to export');
@@ -2399,7 +2941,7 @@ async function onExportAllBackups() {
   showToast('All backups exported');
 }
 
-async function onRestoreBackup(backupId) {
+async function onRestoreBackupStandalone(backupId) {
   const ok = window.confirm(
     'Restore this backup? This will replace your current shortcuts, settings, notes, and recent history.'
   );
@@ -2407,7 +2949,6 @@ async function onRestoreBackup(backupId) {
 
   try {
     await restoreBackup(backupId);
-    // Reload the page to reflect restored state
     window.location.reload();
   } catch (err) {
     console.error('Restore failed', err);
@@ -2415,21 +2956,21 @@ async function onRestoreBackup(backupId) {
   }
 }
 
-async function onDeleteBackupItem(backupId) {
+async function onDeleteBackupItemStandalone(backupId) {
   const ok = window.confirm('Delete this backup?');
   if (!ok) return;
 
   try {
     await deleteBackup(backupId);
     showToast('Backup deleted');
-    await renderBackupList();
+    await renderBackupListStandalone();
   } catch (err) {
     console.error('Delete failed', err);
     showToast('Delete failed: ' + err.message);
   }
 }
 
-async function onExportSingleBackup(backupId) {
+async function onExportSingleBackupStandalone(backupId) {
   const backups = await getBackups();
   const backup = backups.find((b) => b.id === backupId);
   if (!backup) {
@@ -2440,19 +2981,19 @@ async function onExportSingleBackup(backupId) {
   showToast('Backup exported');
 }
 
-async function renderBackupList() {
+async function renderBackupListStandalone() {
   const backups = await getBackups();
-  els.backupCount.textContent = `${backups.length} backup${backups.length !== 1 ? 's' : ''}`;
+  els.backupCountStandalone.textContent = `${backups.length} backup${backups.length !== 1 ? 's' : ''}`;
 
   if (!backups.length) {
-    els.backupList.innerHTML = '';
-    els.backupEmpty.hidden = false;
-    els.backupList.appendChild(els.backupEmpty);
+    els.backupListStandalone.innerHTML = '';
+    els.backupEmptyStandalone.hidden = false;
+    els.backupListStandalone.appendChild(els.backupEmptyStandalone);
     return;
   }
 
-  els.backupEmpty.hidden = true;
-  els.backupList.innerHTML = '';
+  els.backupEmptyStandalone.hidden = true;
+  els.backupListStandalone.innerHTML = '';
 
   for (const backup of backups) {
     const li = document.createElement('li');
@@ -2488,25 +3029,25 @@ async function renderBackupList() {
     restoreBtn.className = 'btn btn-ghost btn-sm';
     restoreBtn.textContent = '↩';
     restoreBtn.title = 'Restore this backup';
-    restoreBtn.addEventListener('click', () => onRestoreBackup(backup.id));
+    restoreBtn.addEventListener('click', () => onRestoreBackupStandalone(backup.id));
 
     const exportBtn = document.createElement('button');
     exportBtn.type = 'button';
     exportBtn.className = 'btn btn-ghost btn-sm';
     exportBtn.textContent = '⬇';
     exportBtn.title = 'Download this backup';
-    exportBtn.addEventListener('click', () => onExportSingleBackup(backup.id));
+    exportBtn.addEventListener('click', () => onExportSingleBackupStandalone(backup.id));
 
     const delBtn = document.createElement('button');
     delBtn.type = 'button';
     delBtn.className = 'btn btn-danger btn-sm';
     delBtn.textContent = '✕';
     delBtn.title = 'Delete this backup';
-    delBtn.addEventListener('click', () => onDeleteBackupItem(backup.id));
+    delBtn.addEventListener('click', () => onDeleteBackupItemStandalone(backup.id));
 
     actions.append(restoreBtn, exportBtn, delBtn);
     li.append(icon, info, actions);
-    els.backupList.appendChild(li);
+    els.backupListStandalone.appendChild(li);
   }
 }
 

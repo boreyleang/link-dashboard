@@ -5,6 +5,9 @@ import {
   updateShortcut,
   removeShortcut,
   reorderShortcuts,
+  toggleFavorite,
+  setFavorite,
+  getFavorites,
 } from '../lib/shortcuts.js';
 import { normalizeUrl, faviconFromUrl } from '../lib/storage.js';
 
@@ -124,5 +127,50 @@ describe('updateShortcut / removeShortcut / reorderShortcuts', () => {
       next.map((s) => s.title),
       ['B', 'C', 'A'],
     );
+  });
+});
+
+describe('favorites', () => {
+  it('createShortcut defaults favorite to false', () => {
+    const item = createShortcut({ url: 'example.com' });
+    assert.equal(item.favorite, false);
+  });
+
+  it('createShortcut accepts favorite true', () => {
+    const item = createShortcut({ url: 'example.com', favorite: true });
+    assert.equal(item.favorite, true);
+  });
+
+  it('updateShortcut sets favorite via patch', () => {
+    const list = [createShortcut({ url: 'a.com' })];
+    const next = updateShortcut(list, list[0].id, { favorite: true });
+    assert.equal(next[0].favorite, true);
+  });
+
+  it('toggleFavorite flips only the target item', () => {
+    const list = [
+      createShortcut({ url: 'a.com' }),
+      createShortcut({ url: 'b.com', favorite: true }),
+    ];
+    const next = toggleFavorite(list, list[0].id);
+    assert.equal(next[0].favorite, true);
+    assert.equal(next[1].favorite, true);
+    const back = toggleFavorite(next, next[1].id);
+    assert.equal(back[1].favorite, false);
+  });
+
+  it('setFavorite sets an explicit value', () => {
+    const list = [createShortcut({ url: 'a.com', favorite: true })];
+    const next = setFavorite(list, list[0].id, false);
+    assert.equal(next[0].favorite, false);
+  });
+
+  it('getFavorites returns only favorited items', () => {
+    const list = [
+      createShortcut({ url: 'a.com', favorite: true }),
+      createShortcut({ url: 'b.com' }),
+      createShortcut({ url: 'c.com', favorite: true }),
+    ];
+    assert.equal(getFavorites(list).length, 2);
   });
 });
