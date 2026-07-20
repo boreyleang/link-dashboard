@@ -1,4 +1,4 @@
-import { loadState, saveState, resetState, faviconFromUrl } from '../lib/storage.js';
+import { loadState, saveState, resetState, faviconFromUrl, STORE_CATALOG } from '../lib/storage.js';
 import {
   createShortcut,
   updateShortcut,
@@ -85,6 +85,7 @@ const els = {
   settingColumns: document.getElementById('setting-columns'),
   settingColumnsValue: document.getElementById('setting-columns-value'),
   settingShowLabels: document.getElementById('setting-show-labels'),
+  settingShowDescription: document.getElementById('setting-show-description'),
   settingShowBookmarks: document.getElementById('setting-show-bookmarks'),
   settingShowNotes: document.getElementById('setting-show-notes'),
   settingShowRecent: document.getElementById('setting-show-recent'),
@@ -119,6 +120,7 @@ const els = {
   archiveEmpty: document.getElementById('archive-empty'),
   btnGroups: document.getElementById('btn-groups'),
   btnGroupFilter: document.getElementById('btn-group-filter'),
+  btnStore: document.getElementById('btn-store'),
   groupsModal: document.getElementById('groups-modal'),
   groupsModalClose: document.getElementById('groups-modal-close'),
   btnGroupsClose: document.getElementById('btn-groups-close'),
@@ -129,6 +131,14 @@ const els = {
   groupFilterDesign: document.getElementById('filter-design'),
   groupFilterProductivity: document.getElementById('filter-productivity'),
   groupFilterDevelopment: document.getElementById('filter-development'),
+  storeModal: document.getElementById('store-modal'),
+  storeModalClose: document.getElementById('store-modal-close'),
+  storeSearch: document.getElementById('store-search'),
+  storeCategoryTabs: document.getElementById('store-category-tabs'),
+  storeGrid: document.getElementById('store-grid'),
+  storeEmpty: document.getElementById('store-empty'),
+  storeSelectedCount: document.getElementById('store-selected-count'),
+  btnStoreAdd: document.getElementById('btn-store-add'),
   groupManagerList: document.getElementById('group-manager-list'),
   groupsEmptyHint: document.getElementById('groups-empty-hint'),
   newGroupInput: document.getElementById('new-group-input'),
@@ -207,6 +217,7 @@ function applyLock() {
   els.btnAdd.hidden = locked;
   els.btnArchiveView.hidden = locked;
   els.btnGroups.hidden = locked;
+  els.btnStore.hidden = locked;
   els.btnSettings.hidden = locked;
   // Clear selection when locking
   if (locked) {
@@ -293,6 +304,7 @@ function bindEvents() {
   els.btnArchiveView.addEventListener('click', openArchiveModal);
   els.btnGroups.addEventListener('click', openGroupsModal);
   els.btnGroupFilter.addEventListener('click', openGroupFilterModal);
+  els.btnStore.addEventListener('click', openStoreModal);
   els.btnSettings.addEventListener('click', openSettingsModal);
 
   // Bulk toolbar
@@ -404,6 +416,20 @@ function bindEvents() {
   els.settingsForm.addEventListener('submit', onSaveSettings);
   els.btnReset.addEventListener('click', onResetDefaults);
   els.settingColumns.addEventListener('input', syncColumnsLabel);
+
+  // Group filter modal
+  els.groupFilterModalClose.addEventListener('click', () => els.groupFilterModal.close());
+  document.getElementById('btn-group-filter-clear').addEventListener('click', onGroupFilterClear);
+  document.getElementById('btn-group-filter-apply').addEventListener('click', onGroupFilterApply);
+  for (const cb of els.groupFilterModal.querySelectorAll('input[name="filter-group"]')) {
+    cb.addEventListener('change', onGroupFilterCheck);
+  }
+
+  // Store modal
+  els.storeModalClose.addEventListener('click', () => els.storeModal.close());
+  document.getElementById('btn-store-cancel').addEventListener('click', () => els.storeModal.close());
+  els.btnStoreAdd.addEventListener('click', onStoreAddSelected);
+  els.storeSearch.addEventListener('input', () => renderStoreGrid(storeActiveCategory));
 
   for (const tab of document.querySelectorAll('[data-bg-mode]')) {
     tab.addEventListener('click', () => setBgMode(tab.dataset.bgMode));
@@ -615,15 +641,22 @@ function renderGrid() {
   const display = state.settings.groupDisplay || 'grid';
   const q = searchQuery.trim().toLowerCase();
 
+  // Filter shortcuts by selected groups
+  const activeGroups = state.settings.filterGroups || [];
+  let shortcuts = state.shortcuts;
+  if (activeGroups.length > 0) {
+    shortcuts = shortcuts.filter((s) => activeGroups.includes(s.group || ''));
+  }
+
   // Filter shortcuts by search query
-  const shortcuts = q
-    ? state.shortcuts.filter((s) =>
-        (s.title || '').toLowerCase().includes(q) ||
-        (s.url || '').toLowerCase().includes(q) ||
-        (s.description || '').toLowerCase().includes(q) ||
-        (s.group || '').toLowerCase().includes(q)
-      )
-    : state.shortcuts;
+  if (q) {
+    shortcuts = shortcuts.filter((s) =>
+      (s.title || '').toLowerCase().includes(q) ||
+      (s.url || '').toLowerCase().includes(q) ||
+      (s.description || '').toLowerCase().includes(q) ||
+      (s.group || '').toLowerCase().includes(q)
+    );
+  }
 
   els.grid.innerHTML = '';
   els.empty.hidden = state.shortcuts.length > 0;
@@ -632,12 +665,16 @@ function renderGrid() {
     return;
   }
 
-  // No results from search
-  if (q && !shortcuts.length) {
+  // No results from search or filter
+  if (!shortcuts.length) {
     els.groupTabsBar.hidden = true;
     const msg = document.createElement('p');
     msg.className = 'search-empty';
-    msg.textContent = `No links match "${searchQuery}"`;
+    if (q) {
+      msg.textContent = `No links match "${searchQuery}"`;
+    } else {
+      msg.textContent = 'No links in selected groups';
+    }
     els.grid.appendChild(msg);
     return;
   }
@@ -700,9 +737,13 @@ function renderGrid() {
       section.appendChild(heading);
     }
 
+    // Wrap tiles in a grid container for flex groups
+    const tileGrid = document.createElement('div');
+    tileGrid.className = 'tile-grid';
     for (const { item } of entries) {
-      section.appendChild(createTileElement(item));
+      tileGrid.appendChild(createTileElement(item));
     }
+    section.appendChild(tileGrid);
 
     els.grid.appendChild(section);
   }
@@ -774,9 +815,16 @@ function createTileElement(item) {
   const iconSrc = item.icon || faviconFromUrl(item.url);
   if (iconSrc) {
     img.src = iconSrc;
+    img.onload = () => img.classList.add('is-loaded');
+    img.onerror = () => {
+      const host = (() => { try { return new URL(item.url).hostname; } catch { return null; } })();
+      if (host && !img.src.includes('google.com/s2/favicons')) {
+        img.src = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=128`;
+      }
+    };
     img.decode()
       .then(() => img.classList.add('is-loaded'))
-      .catch(() => img.classList.remove('is-loaded'));
+      .catch(() => {});
   }
 
   iconWrap.append(img, fallback);
@@ -791,7 +839,7 @@ function createTileElement(item) {
 
   link.append(iconWrap, label);
 
-  if (item.description && item.showDescription !== false) {
+  if (item.description && state.settings.showDescription !== false) {
     const desc = document.createElement('span');
     desc.className = 'tile-description';
     if (searchQuery) {
@@ -828,7 +876,6 @@ function openShortcutModal(item = null) {
   els.fieldColor.value = toColorInput(item?.color || '#4f6ef7');
   setOpenInField(item?.openIn || 'new-tab');
   els.fieldDescription.value = item?.description || '';
-  els.fieldShowDescription.checked = item?.showDescription !== false;
   els.fieldGroup.value = item?.group || '';
   els.fieldOrder.value = String(item?.order ?? 0);
 
@@ -877,9 +924,10 @@ function updateFormPreview() {
 
   if (icon) {
     els.previewIcon.src = icon;
+    els.previewIcon.onload = () => els.previewIcon.classList.add('is-loaded');
     els.previewIcon.decode()
       .then(() => els.previewIcon.classList.add('is-loaded'))
-      .catch(() => els.previewIcon.classList.remove('is-loaded'));
+      .catch(() => {});
   } else {
     els.previewIcon.removeAttribute('src');
   }
@@ -1062,7 +1110,6 @@ async function onSaveShortcut(event) {
     color: els.fieldColor.value,
     openIn: getOpenInField(),
     description: els.fieldDescription.value.trim(),
-    showDescription: els.fieldShowDescription.checked,
     group: els.fieldGroup.value.trim(),
     order: Number(els.fieldOrder.value) || 0,
   };
@@ -1318,6 +1365,7 @@ function openSettingsModal() {
   els.btnClearBg.hidden = !bgImage;
   els.settingColumns.value = String(settings.columns || 0);
   els.settingShowLabels.checked = settings.showLabels !== false;
+  els.settingShowDescription.checked = settings.showDescription !== false;
   els.settingShowBookmarks.checked = Boolean(settings.showBookmarks);
   els.settingShowNotes.checked = Boolean(settings.showNotes);
   els.settingShowRecent.checked = settings.showRecent !== false;
@@ -1432,6 +1480,7 @@ async function onSaveSettings(event) {
     tileSize,
     columns: Number(els.settingColumns.value) || 0,
     showLabels: els.settingShowLabels.checked,
+    showDescription: els.settingShowDescription.checked,
     showBookmarks: els.settingShowBookmarks.checked,
     showNotes: els.settingShowNotes.checked,
     showRecent: els.settingShowRecent.checked,
@@ -1653,6 +1702,93 @@ async function onGroupDisplayChange(event) {
   els.app.dataset.groupDisplay = display;
   await persist();
   renderGrid();
+}
+
+// ── Group Filter modal ─────────────────────────────────────
+
+/** Currently selected groups for filtering. Empty = show all. */
+let filterGroups = [];
+
+function openGroupFilterModal() {
+  // Load current filter from settings
+  filterGroups = [...(state.settings.filterGroups || [])];
+  const allChecked = filterGroups.length === 0;
+
+  // Set checkbox states
+  els.groupFilterAll.checked = allChecked;
+  els.groupFilterSocial.checked = allChecked || filterGroups.includes('Social');
+  els.groupFilterDesign.checked = allChecked || filterGroups.includes('Design');
+  els.groupFilterProductivity.checked = allChecked || filterGroups.includes('Productivity');
+  els.groupFilterDevelopment.checked = allChecked || filterGroups.includes('Development');
+
+  updateFilterSummary();
+  els.groupFilterModal.showModal();
+}
+
+function updateFilterSummary() {
+  const summary = document.getElementById('filter-summary');
+  if (!summary) return;
+  if (filterGroups.length === 0) {
+    summary.textContent = 'Showing all groups.';
+  } else {
+    summary.textContent = `Filtering: ${filterGroups.join(', ')}`;
+  }
+}
+
+function onGroupFilterCheck(event) {
+  const val = event.target.value;
+  const groups = ['Social', 'Design', 'Productivity', 'Development'];
+
+  if (val === 'all') {
+    if (event.target.checked) {
+      // "All" checked → check every group too
+      filterGroups = [];
+      els.groupFilterSocial.checked = true;
+      els.groupFilterDesign.checked = true;
+      els.groupFilterProductivity.checked = true;
+      els.groupFilterDevelopment.checked = true;
+    }
+  } else {
+    // Unchecking a specific group: collect all OTHER checked groups
+    if (!event.target.checked) {
+      filterGroups = groups.filter((g) => {
+        if (g === val) return false;
+        const cb = els.groupFilterModal.querySelector(`input[value="${g}"]`);
+        return cb && cb.checked;
+      });
+    } else {
+      // Checking a specific group: add it and uncheck "All"
+      els.groupFilterAll.checked = false;
+      filterGroups = groups.filter((g) => {
+        if (g === val) return true;
+        const cb = els.groupFilterModal.querySelector(`input[value="${g}"]`);
+        return cb && cb.checked;
+      });
+    }
+    // If nothing is checked, default back to "All"
+    if (filterGroups.length === 0) {
+      els.groupFilterAll.checked = true;
+    }
+  }
+  updateFilterSummary();
+}
+
+async function onGroupFilterApply() {
+  state.settings = { ...state.settings, filterGroups: [...filterGroups] };
+  await persist();
+  renderGrid();
+  els.groupFilterModal.close();
+  showToast(filterGroups.length ? `Showing: ${filterGroups.join(', ')}` : 'Showing all groups');
+}
+
+function onGroupFilterClear() {
+  filterGroups = [];
+  els.groupFilterAll.checked = true;
+  els.groupFilterSocial.checked = true;
+  els.groupFilterDesign.checked = true;
+  els.groupFilterProductivity.checked = true;
+  els.groupFilterDevelopment.checked = true;
+  updateFilterSummary();
 }
 
 // ────────────────────────────────────────────────────────────
@@ -1939,6 +2075,148 @@ function renderRecentBar() {
   }
 }
 
+// ── Link Store modal ──────────────────────────────────────
+
+let storeActiveCategory = 'All';
+let storeSelectedIds = new Set();
+
+const STORE_CATEGORIES = ['All', 'Social', 'Design', 'Productivity', 'Development', 'News', 'Entertainment'];
+
+function openStoreModal() {
+  storeSelectedIds.clear();
+  storeActiveCategory = 'All';
+  els.storeSearch.value = '';
+  renderStoreTabs();
+  renderStoreGrid('All');
+  updateStoreCount();
+  els.storeModal.showModal();
+}
+
+function renderStoreTabs() {
+  els.storeCategoryTabs.innerHTML = '';
+  for (const cat of STORE_CATEGORIES) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'store-cat-tab' + (cat === storeActiveCategory ? ' is-active' : '');
+    btn.textContent = cat;
+    btn.addEventListener('click', () => {
+      storeActiveCategory = cat;
+      renderStoreTabs();
+      renderStoreGrid(cat);
+    });
+    els.storeCategoryTabs.appendChild(btn);
+  }
+}
+
+function renderStoreGrid(category) {
+  const q = els.storeSearch.value.trim().toLowerCase();
+  const existingUrls = new Set(state.shortcuts.map((s) => s.url));
+
+  let items = STORE_CATALOG;
+  if (category && category !== 'All') {
+    items = items.filter((i) => i.group === category);
+  }
+  if (q) {
+    items = items.filter((i) =>
+      (i.title || '').toLowerCase().includes(q) ||
+      (i.url || '').toLowerCase().includes(q) ||
+      (i.description || '').toLowerCase().includes(q) ||
+      (i.group || '').toLowerCase().includes(q)
+    );
+  }
+
+  els.storeGrid.innerHTML = '';
+  els.storeEmpty.hidden = items.length > 0;
+
+  for (const item of items) {
+    const card = document.createElement('div');
+    card.className = 'store-card';
+
+    const alreadyAdded = existingUrls.has(item.url);
+    const checked = storeSelectedIds.has(item.url);
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.className = 'store-card-check';
+    cb.checked = checked;
+    cb.disabled = alreadyAdded;
+    cb.addEventListener('change', () => {
+      if (cb.checked) {
+        storeSelectedIds.add(item.url);
+      } else {
+        storeSelectedIds.delete(item.url);
+      }
+      updateStoreCount();
+    });
+
+    const icon = document.createElement('img');
+    icon.className = 'store-card-icon';
+    icon.alt = '';
+    icon.src = item.icon || faviconFromUrl(item.url);
+    icon.onerror = () => { icon.hidden = true; };
+
+    const title = document.createElement('span');
+    title.className = 'store-card-title';
+    title.textContent = item.title;
+
+    const desc = document.createElement('span');
+    desc.className = 'store-card-desc';
+    desc.textContent = item.description || '';
+
+    const group = document.createElement('span');
+    group.className = 'store-card-group';
+    group.textContent = item.group;
+
+    if (alreadyAdded) {
+      card.classList.add('is-added');
+      const badge = document.createElement('span');
+      badge.className = 'store-card-added';
+      badge.textContent = 'Added';
+      card.append(cb, icon, title, desc, group, badge);
+    } else {
+      card.append(cb, icon, title, desc, group);
+    }
+
+    els.storeGrid.appendChild(card);
+  }
+}
+
+function updateStoreCount() {
+  const n = storeSelectedIds.size;
+  els.storeSelectedCount.textContent = `${n} selected`;
+  els.btnStoreAdd.disabled = n === 0;
+}
+
+async function onStoreAddSelected() {
+  if (storeSelectedIds.size === 0) return;
+
+  const toAdd = STORE_CATALOG.filter((i) => storeSelectedIds.has(i.url));
+  let added = 0;
+
+  for (const item of toAdd) {
+    const exists = state.shortcuts.some((s) => s.url === item.url);
+    if (exists) continue;
+
+    state.shortcuts = [...state.shortcuts, createShortcut({
+      title: item.title,
+      url: item.url,
+      icon: item.icon || '',
+      color: item.color || '#4f6ef7',
+      group: item.group || '',
+      description: item.description || '',
+    })];
+    added++;
+  }
+
+  if (added > 0) {
+    await persist();
+    renderGrid();
+  }
+
+  els.storeModal.close();
+  showToast(`Added ${added} link${added !== 1 ? 's' : ''}`);
+}
+
 // ── Import / Export ───────────────────────────────────────
 
 function onExportShortcuts() {
@@ -1998,7 +2276,6 @@ async function onImportShortcuts(event) {
           color: s.color || '#4f6ef7',
           openIn: s.openIn || 'new-tab',
           description: s.description || '',
-          showDescription: s.showDescription !== false,
           group: s.group || '',
           order: s.order ?? 0,
         },

@@ -1028,6 +1028,150 @@ body::before {
   line-height: 1.35;
 }
 
+/* Group filter checkboxes */
+.filter-group-checkboxes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.store-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.store-checkbox:hover {
+  background: var(--bg-elevated);
+}
+.store-checkbox input[type="checkbox"] {
+  accent-color: var(--primary);
+}
+.store-checkbox label {
+  cursor: pointer;
+  font-size: 0.92rem;
+}
+
+/* Link Store modal */
+.modal-wide .modal-card {
+  max-width: 700px;
+}
+.store-search-row {
+  margin-bottom: 0.75rem;
+}
+.store-search {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-size: 0.9rem;
+  outline: none;
+  box-sizing: border-box;
+}
+.store-search:focus {
+  border-color: var(--primary);
+}
+.store-category-tabs {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+.store-cat-tab {
+  padding: 0.3rem 0.65rem;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.store-cat-tab:hover {
+  background: var(--bg-elevated);
+}
+.store-cat-tab.is-active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+.store-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0.5rem;
+  max-height: 50vh;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+.store-card {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.store-card:hover {
+  border-color: var(--primary);
+}
+.store-card.is-added {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.store-card-check {
+  accent-color: var(--primary);
+  flex-shrink: 0;
+}
+.store-card-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.store-card-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.store-card-desc {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+.store-card-group {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.08);
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.store-card-added {
+  font-size: 0.7rem;
+  color: var(--primary);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.store-selected-count {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
 @media (max-width: 520px) {
   .icon-mode-tabs {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1475,12 +1619,73 @@ body::before {
   display: contents; /* transparent to grid layout — tiles are direct grid children */
 }
 
+/* ── Grid display mode — groups stacked, tiles in a row ─── */
+.app[data-group-display="grid"] .grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--grid-gap);
+}
+.app[data-group-display="grid"] .group-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px 12px;
+  width: 100%;
+  transition: border-color 0.15s;
+}
+.app[data-group-display="grid"] .group-section:hover {
+  border-color: rgba(255,255,255,0.15);
+}
+.app[data-group-display="grid"] .group-heading {
+  grid-column: unset;
+  margin-top: 0;
+  padding: 0 0 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+.app[data-group-display="grid"] .group-heading-line {
+  display: none;
+}
+.app[data-group-display="grid"] .group-heading-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+}
+/* Tiles inside a group flow in a row */
+.app[data-group-display="grid"] .group-section .tile-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--grid-gap);
+  justify-items: center;
+}
+/* Ungrouped items — no card wrapping */
+.app[data-group-display="grid"] .group-section[data-group=""] {
+  background: none;
+  border: none;
+  padding: 0;
+  border-radius: 0;
+}
+.app[data-group-display="grid"] .group-section[data-group=""] .group-heading {
+  display: none;
+}
+.app[data-group-display="grid"] .group-section[data-group=""] .tile-grid {
+  display: contents;
+}
+
 .app[data-group-display="tabs"] .group-section { display: none; }
 .app[data-group-display="tabs"] .group-section.is-active { display: contents; }
 .app[data-group-display="tabs"] .group-heading { display: none; }
+.app[data-group-display="tabs"] .tile-grid { display: contents; }
 
 /* In list mode sections stack vertically */
 .app[data-group-display="list"] .group-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.app[data-group-display="list"] .tile-grid {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1529,6 +1734,22 @@ body::before {
   font-size: 0.78rem;
 }
 .app[data-group-display="list"] .tile:hover { transform: none; background: var(--bg-elevated-hover); }
+
+/* ── Flat display mode — all tiles in one grid, no groups ── */
+.app[data-group-display="flat"] .grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--tile-size), 1fr));
+  gap: var(--grid-gap);
+}
+.app[data-group-display="flat"] .group-section {
+  display: contents;
+}
+.app[data-group-display="flat"] .group-heading {
+  display: none;
+}
+.app[data-group-display="flat"] .tile-grid {
+  display: contents;
+}
 
 /* ── Groups manager modal ───────────────────────────── */
 .group-manager-list {

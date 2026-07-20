@@ -51,9 +51,13 @@
             <span class="btn-icon">⊞</span>
             Groups
           </button>
-          <button type="button" class="btn btn-ghost" id="btn-group-filter" title="Filter by group" hidden>
+          <button type="button" class="btn btn-ghost" id="btn-group-filter" title="Filter by group">
             <span class="btn-icon">📁</span>
             Filter
+          </button>
+          <button type="button" class="btn btn-ghost" id="btn-store" title="Link Store — add recommended links" hidden>
+            <span class="btn-icon">🛒</span>
+            Store
           </button>
           <button type="button" class="btn btn-ghost" id="btn-settings" title="Customize dashboard" hidden>
             <span class="btn-icon">⚙</span>
@@ -100,6 +104,31 @@
             <div class="modal-footer-right">
               <button type="button" class="btn btn-ghost" id="btn-group-filter-clear">Clear all</button>
               <button type="button" class="btn btn-primary" id="btn-group-filter-apply">Apply</button>
+            </div>
+          </footer>
+        </div>
+      </dialog>
+
+      <!-- Link Store modal -->
+      <dialog class="modal modal-wide" id="store-modal">
+        <div class="modal-card">
+          <header class="modal-header">
+            <h2>🛍 Link Store</h2>
+            <button type="button" class="icon-btn" id="store-modal-close" aria-label="Close">×</button>
+          </header>
+          <div class="modal-body">
+            <div class="store-search-row">
+              <input type="search" id="store-search" class="store-search" placeholder="Search links…" autocomplete="off" />
+            </div>
+            <div class="store-category-tabs" id="store-category-tabs" role="tablist"></div>
+            <div class="store-grid" id="store-grid"></div>
+            <p class="panel-help" id="store-empty" hidden>No matching links found.</p>
+          </div>
+          <footer class="modal-footer">
+            <span class="store-selected-count" id="store-selected-count">0 selected</span>
+            <div class="modal-footer-right">
+              <button type="button" class="btn btn-ghost" id="btn-store-cancel">Cancel</button>
+              <button type="button" class="btn btn-primary" id="btn-store-add" disabled>Add selected</button>
             </div>
           </footer>
         </div>
@@ -235,11 +264,6 @@
           <label class="field">
             <span>Description <em>(optional)</em></span>
             <textarea id="field-description" placeholder="Short note or remark about this link…" rows="2" autocomplete="off"></textarea>
-          </label>
-
-          <label class="field field-check">
-            <input type="checkbox" id="field-show-description" checked />
-            <span>Show description on tile</span>
           </label>
 
           <div class="field field-row-2">
@@ -528,6 +552,11 @@
           </label>
 
           <label class="field field-check">
+            <input type="checkbox" id="setting-show-description" checked />
+            <span>Show descriptions on tiles</span>
+          </label>
+
+          <label class="field field-check">
             <input type="checkbox" id="setting-show-bookmarks" />
             <span>Show bookmarks panel</span>
           </label>
@@ -591,6 +620,10 @@
                 <input type="radio" name="group-display" value="list" />
                 <span>List</span>
               </label>
+              <label class="segment">
+                <input type="radio" name="group-display" value="flat" />
+                <span>Flat</span>
+              </label>
             </div>
           </div>
 
@@ -645,50 +678,6 @@
         <footer class="modal-footer">
           <div class="modal-footer-right">
             <button type="button" class="btn btn-ghost" id="btn-archive-close">Close</button>
-          </div>
-        </footer>
-      </div>
-    </dialog>
-
-    <!-- Group Filter modal -->
-    <dialog class="modal" id="group-filter-modal">
-      <div class="modal-card">
-        <header class="modal-header">
-          <h2>Filter shortcuts by group</h2>
-          <button type="button" class="icon-btn" id="group-filter-modal-close" aria-label="Close">×</button>
-        </header>
-        <div class="modal-body">
-          <div class="filter-group-checkboxes">
-            <div class="store-checkbox">
-              <input type="checkbox" id="filter-all" name="filter-group" value="all" checked>
-              <label for="filter-all">All (all groups)</label>
-            </div>
-            <div class="store-checkbox">
-              <input type="checkbox" id="filter-social" name="filter-group" value="Social">
-              <label for="filter-social">Social (YouTube, Gmail)</label>
-            </div>
-            <div class="store-checkbox">
-              <input type="checkbox" id="filter-design" name="filter-group" value="Design">
-              <label for="filter-design">Design (GitHub, Figma, Dribbble)</label>
-            </div>
-            <div class="store-checkbox">
-              <input type="checkbox" id="filter-productivity" name="filter-group" value="Productivity">
-              <label for="filter-productivity">Productivity</label>
-            </div>
-            <div class="store-checkbox">
-              <input type="checkbox" id="filter-development" name="filter-group" value="Development">
-              <label for="filter-development">Development</label>
-            </div>
-          </div>
-          <p class="panel-help">
-            Select which groups to show. Filtering hides shortcuts from groups you don't select.
-          </p>
-          <p class="panel-help" id="filter-summary"></p>
-        </div>
-        <footer class="modal-footer">
-          <div class="modal-footer-right">
-            <button type="button" class="btn btn-ghost" id="btn-group-filter-clear">Clear all</button>
-            <button type="button" class="btn btn-primary" id="btn-group-filter-apply">Apply</button>
           </div>
         </footer>
       </div>
