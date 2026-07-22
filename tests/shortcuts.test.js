@@ -73,6 +73,19 @@ describe('createShortcut', () => {
 
     assert.equal(item.icon, dataUrl);
   });
+
+  it('defaults iconColor to empty string', () => {
+    const item = createShortcut({ url: 'example.com' });
+    assert.equal(item.iconColor, '');
+  });
+
+  it('stores the search icon color', () => {
+    const item = createShortcut({
+      url: 'example.com',
+      iconColor: '#ff5500',
+    });
+    assert.equal(item.iconColor, '#ff5500');
+  });
 });
 
 describe('updateShortcut icon persistence', () => {
@@ -93,6 +106,18 @@ describe('updateShortcut icon persistence', () => {
 
     assert.equal(next[0].title, 'Alpha');
     assert.equal(next[0].icon, dataUrl);
+  });
+
+  it('updates iconColor when patched', () => {
+    const base = [createShortcut({ url: 'a.com', iconColor: '#ffffff' })];
+    const next = updateShortcut(base, base[0].id, { iconColor: '#00ff88' });
+    assert.equal(next[0].iconColor, '#00ff88');
+  });
+
+  it('keeps iconColor when not patched', () => {
+    const base = [createShortcut({ url: 'a.com', iconColor: '#ff5500' })];
+    const next = updateShortcut(base, base[0].id, { title: 'Renamed' });
+    assert.equal(next[0].iconColor, '#ff5500');
   });
 });
 

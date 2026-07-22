@@ -55,6 +55,16 @@ describe('iconifySvgUrl', () => {
     const url = iconifySvgUrl('mdi', 'github');
     assert.match(url, /api\.iconify\.design\/mdi\/github\.svg/);
   });
+
+  it('defaults to white icons', () => {
+    const url = iconifySvgUrl('mdi', 'github');
+    assert.match(url, /color=%23ffffff/);
+  });
+
+  it('encodes a custom icon color', () => {
+    const url = iconifySvgUrl('mdi', 'github', '#ff5500');
+    assert.match(url, /color=%23ff5500/);
+  });
 });
 
 describe('parseIconifyUrl / isRemoteIconifyUrl', () => {

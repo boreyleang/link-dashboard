@@ -29,6 +29,7 @@ import {
   fileToIconDataUrl,
   fileToBackgroundDataUrl,
   detectIconMode,
+  iconifySvgUrl,
 } from '../lib/icons.js';
 
 const els = {
@@ -89,6 +90,7 @@ const els = {
   fieldIconUrl: document.getElementById('field-icon-url'),
   fieldIconFile: document.getElementById('field-icon-file'),
   fieldIconSearch: document.getElementById('field-icon-search'),
+  fieldIconColor: document.getElementById('field-icon-color'),
   fieldColor: document.getElementById('field-color'),
   fieldDescription: document.getElementById('field-description'),
   fieldGroup: document.getElementById('field-group'),
@@ -203,6 +205,13 @@ let searchDebounceTimer = null;
 let customIconValue = '';
 /** @type {Promise<string> | null} */
 let pendingIconResolve = null;
+/** Color applied to search-picked (Iconify) icons. */
+let iconColor = '#ffffff';
+/** Results of the last icon search (used to re-tint previews on color change). */
+let lastIconResults = [];
+let iconColorDebounceTimer = null;
+/** Key of the latest embed request — stale async resolves are ignored. */
+let latestIconEmbedKey = '';
 /** Whether the dashboard is locked (edit buttons hidden, drag disabled). */
 let locked = true;
 /** Set of shortcut IDs currently selected for bulk action. */
@@ -467,6 +476,7 @@ function bindEvents() {
 
   els.iconResults.addEventListener('click', onIconResultClick);
   els.iconSuggestions.addEventListener('click', onSuggestionClick);
+  els.fieldIconColor.addEventListener('input', onIconColorChange);
 
   els.settingsModalClose.addEventListener('click', () => els.settingsModal.close());
   els.btnSettingsCancel.addEventListener('click', () => els.settingsModal.close());
@@ -1087,7 +1097,10 @@ function openShortcutModal(item = null) {
   els.fieldIconFile.value = '';
   els.fieldIconSearch.value = '';
   els.iconResults.innerHTML = '';
+  lastIconResults = [];
   selectedSearchIconId = '';
+  els.fieldIconColor.value = toColorInput(item?.iconColor || '', '#ffffff');
+  iconColor = els.fieldIconColor.value;
   els.uploadStatus.hidden = true;
   els.btnClearUpload.hidden = !icon.startsWith('data:');
   els.iconSearchStatus.textContent = 'Powered by Iconify (free open icon sets).';
@@ -1171,18 +1184,22 @@ async function runIconSearch() {
   if (!query) {
     els.iconSearchStatus.textContent = 'Type a keyword to search free icons.';
     els.iconResults.innerHTML = '';
+    lastIconResults = [];
     return;
   }
 
   els.iconSearchStatus.textContent = `Searching “${query}”…`;
   els.iconResults.innerHTML = '';
+  lastIconResults = [];
 
   try {
-    const { icons, total } = await searchIcons(query, { limit: 48 });
+    const { icons, total } = await searchIcons(query, { limit: 48, color: iconColor });
     if (!icons.length) {
       els.iconSearchStatus.textContent = 'No icons found. Try another word, or open free stores below.';
       return;
     }
+
+    lastIconResults = icons;
 
     els.iconSearchStatus.textContent = `Found ${total.toLocaleString()} icons — showing ${icons.length}. Click one to use it.`;
     renderIconResults(icons);
@@ -1229,15 +1246,28 @@ async function onIconResultClick(event) {
     el.classList.toggle('is-selected', el.dataset.iconId === iconId);
   }
 
+  await embedSearchIcon(iconId, 'Icon selected');
+}
+
+/**
+ * Download the chosen search icon in the current icon color and store it as a
+ * durable data URL. Stale resolves (another icon/color chosen meanwhile) are ignored.
+ * @param {string} iconId e.g. "mdi:github"
+ * @param {string} [toastMessage] shown on success — empty string shows no toast
+ */
+async function embedSearchIcon(iconId, toastMessage = '') {
+  const key = `${iconId}|${iconColor}`;
+  latestIconEmbedKey = key;
+
   els.iconSearchStatus.textContent = `Selected ${iconId} — embedding icon for offline use…`;
 
-  const resolvePromise = resolveIconifyToDataUrl(iconId);
+  const resolvePromise = resolveIconifyToDataUrl(iconId, iconColor);
   pendingIconResolve = resolvePromise;
 
   try {
     const dataUrl = await resolvePromise;
-    // Ignore stale results if the user picked another icon meanwhile
-    if (selectedSearchIconId !== iconId) {
+    // Ignore stale results if the user picked another icon or color meanwhile
+    if (latestIconEmbedKey !== key) {
       return;
     }
     // Sanity-check: must be a non-trivial data URL
@@ -1248,10 +1278,10 @@ async function onIconResultClick(event) {
     els.fieldIcon.value = dataUrl;
     updateFormPreview();
     els.iconSearchStatus.textContent = `Selected ${iconId} (saved with shortcut)`;
-    showToast('Icon selected');
+    if (toastMessage) showToast(toastMessage);
   } catch (error) {
     console.error(error);
-    if (selectedSearchIconId === iconId) {
+    if (latestIconEmbedKey === key) {
       els.iconSearchStatus.textContent =
         'Could not download that icon for offline use. Check network and try another.';
       showToast('Could not load icon');
@@ -1261,6 +1291,30 @@ async function onIconResultClick(event) {
       pendingIconResolve = null;
     }
   }
+}
+
+/**
+ * Icon color changed: re-tint the search result previews and re-embed the
+ * selected icon in the new color. Debounced — color inputs fire continuously.
+ */
+function onIconColorChange() {
+  iconColor = toColorInput(els.fieldIconColor.value, '#ffffff');
+
+  clearTimeout(iconColorDebounceTimer);
+  iconColorDebounceTimer = setTimeout(() => {
+    // Re-tint previews without a new search request
+    for (const icon of lastIconResults) {
+      icon.svgUrl = iconifySvgUrl(icon.prefix, icon.name, iconColor);
+    }
+    if (lastIconResults.length) {
+      renderIconResults(lastIconResults);
+    }
+
+    // Re-embed the picked icon in the new color
+    if (iconMode === 'search' && selectedSearchIconId) {
+      embedSearchIcon(selectedSearchIconId);
+    }
+  }, 200);
 }
 
 async function onSaveShortcut(event) {
@@ -1299,6 +1353,7 @@ async function onSaveShortcut(event) {
     title: els.fieldTitle.value,
     url: els.fieldUrl.value,
     icon,
+    iconColor: els.fieldIconColor.value || '',
     color: els.fieldColor.value,
     openIn: getOpenInField(),
     description: els.fieldDescription.value.trim(),
@@ -2437,9 +2492,9 @@ function showToastUndo(message, onUndo) {
   }, 6000);
 }
 
-function toColorInput(value) {
+function toColorInput(value, fallback = '#4f6ef7') {
   if (/^#[0-9a-fA-F]{6}$/.test(value)) return value;
-  return '#4f6ef7';
+  return fallback;
 }
 
 function getOpenInField() {
@@ -2836,6 +2891,7 @@ async function onImportShortcuts(event) {
           title: String(s.title || '').trim() || s.url,
           url: s.url,
           icon: s.icon || '',
+          iconColor: s.iconColor || '',
           color: s.color || '#4f6ef7',
           openIn: s.openIn || 'new-tab',
           description: s.description || '',
