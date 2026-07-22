@@ -264,6 +264,11 @@ async function init() {
  */
 function applyLock() {
   els.app.dataset.locked = String(locked);
+  // Sync draggable on already-rendered tiles — without this, tiles rendered
+  // while locked stay non-draggable after unlocking until a full re-render.
+  for (const tile of els.grid.querySelectorAll('.tile')) {
+    tile.draggable = !locked;
+  }
   els.btnAdd.hidden = locked;
   els.btnArchiveView.hidden = locked;
   els.btnGroups.hidden = locked;
