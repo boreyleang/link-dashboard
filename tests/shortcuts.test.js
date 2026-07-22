@@ -9,7 +9,7 @@ import {
   setFavorite,
   getFavorites,
 } from '../lib/shortcuts.js';
-import { normalizeUrl, faviconFromUrl } from '../lib/storage.js';
+import { normalizeUrl, faviconFromUrl, DEFAULT_SHORTCUTS, DEFAULT_SETTINGS } from '../lib/storage.js';
 
 describe('normalizeUrl', () => {
   it('adds https when protocol is missing', () => {
@@ -152,6 +152,37 @@ describe('updateShortcut / removeShortcut / reorderShortcuts', () => {
       next.map((s) => s.title),
       ['B', 'C', 'A'],
     );
+  });
+});
+
+describe('DEFAULT_SHORTCUTS (reset to defaults)', () => {
+  it('provides a recommended starter set of popular links', () => {
+    assert.ok(DEFAULT_SHORTCUTS.length >= 10);
+  });
+
+  it('every default has unique id, title, https url, icon and hex color', () => {
+    const ids = new Set();
+    for (const item of DEFAULT_SHORTCUTS) {
+      assert.ok(item.id, `missing id for ${item.title}`);
+      assert.ok(!ids.has(item.id), `duplicate id ${item.id}`);
+      ids.add(item.id);
+      assert.ok(item.title, `missing title for ${item.id}`);
+      assert.match(item.url, /^https:\/\//, `${item.title} url must be https`);
+      assert.match(item.icon, /^https:\/\//, `${item.title} icon must be a url`);
+      assert.match(item.color, /^#[0-9a-fA-F]{6}$/, `${item.title} color must be hex`);
+      assert.equal(item.openIn, 'new-tab');
+    }
+  });
+
+  it('every default group is listed in settings groupOrder', () => {
+    const groupOrder = DEFAULT_SETTINGS.groupOrder || [];
+    for (const item of DEFAULT_SHORTCUTS) {
+      if (!item.group) continue;
+      assert.ok(
+        groupOrder.includes(item.group),
+        `group "${item.group}" (${item.title}) missing from groupOrder`,
+      );
+    }
   });
 });
 
