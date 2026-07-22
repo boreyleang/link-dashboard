@@ -8,6 +8,10 @@ import {
   toggleFavorite,
   setFavorite,
   getFavorites,
+  getGroupMeta,
+  setGroupMeta,
+  renameGroupMeta,
+  deleteGroupMeta,
 } from '../lib/shortcuts.js';
 import { normalizeUrl, faviconFromUrl, DEFAULT_SHORTCUTS, DEFAULT_SETTINGS } from '../lib/storage.js';
 
@@ -183,6 +187,76 @@ describe('DEFAULT_SHORTCUTS (reset to defaults)', () => {
         `group "${item.group}" (${item.title}) missing from groupOrder`,
       );
     }
+  });
+
+  it('DEFAULT_SETTINGS ships well-formed groupMeta defaults', () => {
+    const meta = DEFAULT_SETTINGS.groupMeta || {};
+    assert.ok(typeof meta === 'object' && meta !== null, 'groupMeta must be an object');
+    // Every default group should have a color and icon
+    for (const g of DEFAULT_SETTINGS.groupOrder) {
+      assert.ok(meta[g], `default group "${g}" missing from groupMeta`);
+      assert.match(meta[g].color, /^#[0-9a-fA-F]{6}$/, `${g} color must be hex`);
+      assert.ok(meta[g].icon, `${g} must have an icon`);
+    }
+  });
+});
+
+describe('group metadata', () => {
+  const baseSettings = { groupOrder: ['Popular'], groupMeta: {} };
+
+  it('getGroupMeta returns an empty object for unknown groups', () => {
+    assert.deepEqual(getGroupMeta(baseSettings, 'Popular'), {});
+    assert.deepEqual(getGroupMeta(baseSettings, 'Nope'), {});
+    assert.deepEqual(getGroupMeta(null, 'x'), {});
+  });
+
+  it('setGroupMeta stores a sanitized color and icon', () => {
+    const next = setGroupMeta(baseSettings, 'Popular', { color: '#4285F4', icon: '🔥' });
+    assert.equal(next.groupMeta.Popular.color, '#4285f4');
+    assert.equal(next.groupMeta.Popular.icon, '🔥');
+    // original settings object is not mutated
+    assert.deepEqual(baseSettings.groupMeta, {});
+  });
+
+  it('getGroupMeta reads back stored metadata', () => {
+    const next = setGroupMeta(baseSettings, 'Popular', { color: '#10a37f', icon: '🤖' });
+    assert.deepEqual(getGroupMeta(next, 'Popular'), { color: '#10a37f', icon: '🤖' });
+  });
+
+  it('setGroupMeta rejects invalid colors and trims icons', () => {
+    const next = setGroupMeta(baseSettings, 'Popular', { color: 'not-a-color', icon: '  📦  ' });
+    assert.equal(next.groupMeta.Popular.color, undefined);
+    assert.equal(next.groupMeta.Popular.icon, '📦');
+  });
+
+  it('setGroupMeta caps icon length to 4 characters', () => {
+    const next = setGroupMeta(baseSettings, 'Popular', { icon: 'abcdefgh' });
+    assert.equal(next.groupMeta.Popular.icon, 'abcd');
+  });
+
+  it('setGroupMeta removes an entry when all fields are cleared', () => {
+    const withMeta = setGroupMeta(baseSettings, 'Popular', { color: '#4285f4', icon: '🔥' });
+    const cleared = setGroupMeta(withMeta, 'Popular', { color: '', icon: '' });
+    assert.ok(!('Popular' in cleared.groupMeta));
+  });
+
+  it('renameGroupMeta carries metadata to the new name', () => {
+    const withMeta = setGroupMeta(baseSettings, 'Popular', { color: '#4285f4', icon: '🔥' });
+    const renamed = renameGroupMeta(withMeta, 'Popular', 'Trending');
+    assert.ok(!('Popular' in renamed.groupMeta));
+    assert.equal(renamed.groupMeta.Trending.color, '#4285f4');
+    assert.equal(renamed.groupMeta.Trending.icon, '🔥');
+  });
+
+  it('renameGroupMeta is a no-op when the group has no metadata', () => {
+    assert.equal(renameGroupMeta(baseSettings, 'Popular', 'Trending'), baseSettings);
+  });
+
+  it('deleteGroupMeta removes an entry and is a no-op when absent', () => {
+    const withMeta = setGroupMeta(baseSettings, 'Popular', { color: '#4285f4' });
+    const deleted = deleteGroupMeta(withMeta, 'Popular');
+    assert.ok(!('Popular' in deleted.groupMeta));
+    assert.equal(deleteGroupMeta(baseSettings, 'Popular'), baseSettings);
   });
 });
 

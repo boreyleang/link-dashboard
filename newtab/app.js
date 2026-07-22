@@ -19,6 +19,10 @@ import {
   normalizeOpenIn,
   toggleFavorite,
   getFavorites,
+  getGroupMeta,
+  setGroupMeta,
+  renameGroupMeta,
+  deleteGroupMeta,
 } from '../lib/shortcuts.js';
 import {
   FREE_ICON_STORES,
@@ -876,8 +880,23 @@ function renderGrid() {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'group-tab' + (g === activeGroupTab ? ' is-active' : '');
-      btn.textContent = g || 'Other';
       btn.dataset.group = g;
+      // Per-group accent color + optional emoji/icon
+      const meta = g ? getGroupMeta(state.settings, g) : {};
+      if (meta.color) {
+        btn.classList.add('has-accent');
+        btn.style.setProperty('--group-accent', meta.color);
+      }
+      if (meta.icon) {
+        const icon = document.createElement('span');
+        icon.className = 'group-tab-icon';
+        icon.textContent = meta.icon;
+        btn.appendChild(icon);
+      }
+      const label = document.createElement('span');
+      label.className = 'group-tab-label';
+      label.textContent = g || 'Other';
+      btn.appendChild(label);
       btn.addEventListener('click', () => {
         activeGroupTab = g;
         renderGrid();
@@ -902,6 +921,18 @@ function renderGrid() {
       const heading = document.createElement('div');
       heading.className = 'group-heading';
       heading.dataset.group = groupName;
+      // Apply per-group accent color + optional emoji/icon
+      const meta = groupName ? getGroupMeta(state.settings, groupName) : {};
+      if (meta.color) {
+        heading.classList.add('has-accent');
+        heading.style.setProperty('--group-accent', meta.color);
+      }
+      if (meta.icon) {
+        const icon = document.createElement('span');
+        icon.className = 'group-heading-icon';
+        icon.textContent = meta.icon;
+        heading.appendChild(icon);
+      }
       const label = document.createElement('span');
       label.className = 'group-heading-label';
       label.textContent = groupName || 'Other';
@@ -1903,6 +1934,45 @@ function renderGroupManager() {
     handle.textContent = '⠿';
     handle.title = 'Drag to reorder';
 
+    // Accent color picker (per-group)
+    const meta = getGroupMeta(state.settings, name);
+    const colorInput = document.createElement('input');
+    colorInput.type = 'color';
+    colorInput.className = 'group-color-input';
+    colorInput.value = meta.color || '#6d8cff';
+    colorInput.title = 'Group accent color';
+    colorInput.setAttribute('aria-label', `Accent color for ${name}`);
+    colorInput.addEventListener('change', () => onGroupMetaChange(name, { color: colorInput.value }));
+    // Stop the draggable row from hijacking the press (native color picker)
+    colorInput.addEventListener('mousedown', (e) => e.stopPropagation());
+    colorInput.addEventListener('pointerdown', (e) => e.stopPropagation());
+
+    // Clear the accent color (the native color input can't be emptied)
+    const colorClear = document.createElement('button');
+    colorClear.type = 'button';
+    colorClear.className = 'group-color-clear';
+    colorClear.title = 'Clear accent color';
+    colorClear.textContent = '⤬';
+    colorClear.hidden = !meta.color;
+    colorClear.setAttribute('aria-label', `Clear accent color for ${name}`);
+    colorClear.addEventListener('click', () => onGroupMetaChange(name, { color: '' }));
+    colorClear.addEventListener('mousedown', (e) => e.stopPropagation());
+    colorClear.addEventListener('pointerdown', (e) => e.stopPropagation());
+
+    // Optional emoji/icon
+    const iconInput = document.createElement('input');
+    iconInput.type = 'text';
+    iconInput.className = 'group-icon-input';
+    iconInput.value = meta.icon || '';
+    iconInput.maxLength = 4;
+    iconInput.placeholder = '🙂';
+    iconInput.title = 'Click & type an emoji, e.g. 🔥 🎬 🛒';
+    iconInput.setAttribute('aria-label', `Emoji for ${name}`);
+    iconInput.addEventListener('change', () => onGroupMetaChange(name, { icon: iconInput.value }));
+    // Let the text input receive focus instead of starting a row drag
+    iconInput.addEventListener('mousedown', (e) => e.stopPropagation());
+    iconInput.addEventListener('pointerdown', (e) => e.stopPropagation());
+
     // Name input (inline rename)
     const nameInput = document.createElement('input');
     nameInput.type = 'text';
@@ -1910,6 +1980,8 @@ function renderGroupManager() {
     nameInput.value = name;
     nameInput.setAttribute('aria-label', `Rename group ${name}`);
     nameInput.addEventListener('change', () => onRenameGroup(name, nameInput.value.trim()));
+    nameInput.addEventListener('mousedown', (e) => e.stopPropagation());
+    nameInput.addEventListener('pointerdown', (e) => e.stopPropagation());
 
     // Count badge
     const badge = document.createElement('span');
@@ -1924,7 +1996,7 @@ function renderGroupManager() {
     delBtn.textContent = '✕';
     delBtn.addEventListener('click', () => onDeleteGroup(name));
 
-    li.append(handle, nameInput, badge, delBtn);
+    li.append(handle, colorInput, colorClear, iconInput, nameInput, badge, delBtn);
 
     // Drag-to-reorder within manager list
     li.addEventListener('dragstart', (e) => {
@@ -1977,6 +2049,9 @@ async function onRenameGroup(oldName, newName) {
   if (idx >= 0) order[idx] = newName;
   state.settings = { ...state.settings, groupOrder: order };
 
+  // Carry over the group's accent color / emoji to its new name
+  state.settings = renameGroupMeta(state.settings, oldName, newName);
+
   if (activeGroupTab === oldName) activeGroupTab = newName;
 
   await persist();
@@ -2001,6 +2076,8 @@ async function onDeleteGroup(name) {
     ...state.settings,
     groupOrder: (state.settings.groupOrder || []).filter((g) => g !== name),
   };
+  // Drop any per-group color / emoji for the removed group
+  state.settings = deleteGroupMeta(state.settings, name);
   if (activeGroupTab === name) activeGroupTab = '';
 
   await persist();
@@ -2017,6 +2094,14 @@ async function onReorderGroup(fromName, beforeName) {
   withoutFrom.splice(insertIdx, 0, fromName);
 
   state.settings = { ...state.settings, groupOrder: withoutFrom };
+  await persist();
+  renderGrid();
+  renderGroupManager();
+}
+
+/** Update a group's accent color and/or emoji, then refresh the UI. */
+async function onGroupMetaChange(name, patch) {
+  state.settings = setGroupMeta(state.settings, name, patch);
   await persist();
   renderGrid();
   renderGroupManager();
@@ -2074,10 +2159,17 @@ function renderGroupFilterCheckboxes() {
       const count = state.shortcuts.filter((s) => (s.group || '') === g).length;
       const id = `filter-grp-${escapeAttr(g)}`;
       const checked = allChecked || filterGroups.includes(g);
+      // Per-group emoji + color dot
+      const meta = getGroupMeta(state.settings, g);
+      const iconHtml = meta.icon ? `<span class="group-filter-icon">${escapeHtml(meta.icon)}</span>` : '';
+      const dotHtml = meta.color
+        ? `<span class="group-filter-dot" style="background:${escapeAttr(meta.color)}"></span>`
+        : '';
+      const labelStyle = meta.color ? ` style="color:${escapeAttr(meta.color)}"` : '';
       html += `
         <div class="store-checkbox">
           <input type="checkbox" id="${escapeAttr(id)}" name="filter-group" value="${escapeAttr(g)}" ${checked ? 'checked' : ''}>
-          <label for="${escapeAttr(id)}">${escapeHtml(g)} (${count})</label>
+          <label for="${escapeAttr(id)}"${labelStyle}>${iconHtml}${dotHtml}${escapeHtml(g)} (${count})</label>
         </div>`;
     }
   }
