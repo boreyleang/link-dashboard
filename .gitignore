@@ -4,6 +4,7 @@ dist-web/
 .chrome-dev-profile/
 *.zip
 .DS_Store
+.vscode/
 *.log
 .env
 .env.*
