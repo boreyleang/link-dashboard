@@ -13,7 +13,8 @@ import {
   renameGroupMeta,
   deleteGroupMeta,
 } from '../lib/shortcuts.js';
-import { normalizeUrl, faviconFromUrl, DEFAULT_SHORTCUTS, DEFAULT_SETTINGS } from '../lib/storage.js';
+import { normalizeUrl, faviconFromUrl, hostnameLabel } from '../lib/url.js';
+import { DEFAULT_SHORTCUTS, DEFAULT_SETTINGS } from '../lib/storage.js';
 
 describe('normalizeUrl', () => {
   it('adds https when protocol is missing', () => {

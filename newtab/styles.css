@@ -126,21 +126,10 @@ body::before {
 }
 
 .right-panel-inner {
-  position: sticky;
-  top: 24px;
-  max-height: calc(100vh - 48px);
-  overflow-y: auto;
-  overflow-x: hidden;
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
   display: flex;
   flex-direction: column;
   gap: 0;
 }
-
-.right-panel-inner::-webkit-scrollbar { width: 4px; }
-.right-panel-inner::-webkit-scrollbar-track { background: transparent; }
-.right-panel-inner::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
 @media (max-width: 900px) {
   .app[data-show-bookmarks="true"] {

@@ -46,19 +46,19 @@
             <span id="lock-label">Locked</span>
           </button>
           <button type="button" class="btn btn-ghost" id="btn-add" title="Add shortcut" hidden>
-            <span class="btn-icon">+</span>
+            <span class="btn-icon">🔗</span>
             Add link
           </button>
           <button type="button" class="btn btn-ghost" id="btn-archive-view" title="View archive" hidden>
-            <span class="btn-icon">📦</span>
+            <span class="btn-icon">🗄️</span>
             Archive
           </button>
           <button type="button" class="btn btn-ghost" id="btn-groups" title="Manage groups" hidden>
-            <span class="btn-icon">⊞</span>
+            <span class="btn-icon">👥</span>
             Groups
           </button>
           <button type="button" class="btn btn-ghost" id="btn-group-filter" title="Filter by group">
-            <span class="btn-icon">📁</span>
+            <span class="btn-icon">🏷️</span>
             Filter
           </button>
           <button type="button" class="btn btn-ghost" id="btn-favorites-filter" title="Show favorites only" aria-pressed="false">
@@ -70,11 +70,11 @@
             Store
           </button>
           <button type="button" class="btn btn-ghost" id="btn-import-export" title="Import / Export shortcuts">
-            <span class="btn-icon">📦</span>
+            <span class="btn-icon">⇅</span>
             Import/Export
           </button>
           <button type="button" class="btn btn-ghost" id="btn-backup" title="Backup & Restore">
-            <span class="btn-icon">🔄</span>
+            <span class="btn-icon">💾</span>
             Backup
           </button>
           <button type="button" class="btn btn-ghost" id="btn-settings" title="Customize dashboard" hidden>
@@ -185,8 +185,6 @@
           <div class="recent-body" id="recent-body">
             <div class="recent-list" id="recent-list" role="list"></div>
           </div>
-        </div>
-
         </div><!-- /recent-widget -->
 
         <div class="right-panel-divider" id="panel-divider-rn" hidden></div>
@@ -667,6 +665,11 @@
           <label class="field field-check">
             <input type="checkbox" id="setting-show-recent" checked />
             <span>Show recently visited bar</span>
+          </label>
+
+          <label class="field">
+            <span>Recent links limit <em>(1–20)</em></span>
+            <input type="number" id="setting-recent-count" min="1" max="20" step="1" value="5" />
           </label>
 
           <label class="field field-check">
