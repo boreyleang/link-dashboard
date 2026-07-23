@@ -196,7 +196,7 @@ The store requires between 1 and 5 screenshots at **1280×800** (or 640×400, bu
 3. Chrome menu → More tools → Developer tools, then
    Device Toolbar (Ctrl+Shift+M), set Responsive **1280×800**.
 4. Resize the window, then use the screenshot command palette action
-   (Ctrl+Shift+P → "Capture full size screenshot"), or ImagePr
+   (Ctrl+Shift+P → "Capture full size screenshot"), or use
    your OS screen-grab tool cropped to 1280×800.
 
 ### Suggested shots (in order)
@@ -235,8 +235,7 @@ Boosts your listing's visibility. Recommended sizes:
 - Large promo tile: **920×680** PNG/JPG
 - Marquee promo tile: **1400×560** PNG/JPG
 
-Reuse a screenshot or design a simple "dashboard preview" graphic. These are
-optional in 2024 but still help on category pages.
+Reuse a screenshot or design a simple "dashboard preview" graphic. These are optional but still help on category pages.
 
 ---
 
