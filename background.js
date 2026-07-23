@@ -136,6 +136,14 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 });
 
+// ── Toolbar action ───────────────────────────────────────
+// The toolbar button opens a fresh New Tab, which renders the dashboard
+// via the chrome_url_overrides entry in manifest.json.
+
+chrome.action.onClicked.addListener(() => {
+  chrome.tabs.create({ url: 'chrome://newtab' });
+});
+
 // ── Lifecycle events ─────────────────────────────────────
 
 chrome.runtime.onInstalled.addListener(async () => {

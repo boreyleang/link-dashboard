@@ -31,7 +31,10 @@ A Chrome MV3 extension that overrides the New Tab page with a link dashboard. Pl
 
 ## Gotchas
 
-- Version numbers are tracked in two places and are **out of sync**: `package.json` is `1.2.0` while `manifest.json` is `1.3.1`. The version users see is `manifest.json`. Bump both when releasing.
+- Version numbers must stay in sync between `package.json` and `manifest.json` — `scripts/package.mjs` reads the version from `package.json` to name the zip, while the Chrome Web Store reads it from `manifest.json`. Both are `1.4.0` as of this release.
+- The `history` permission is NOT requested. The "Recent" bar records only dashboard shortcut clicks (stored in `localStorage` via `newtab/ui/recent.js`); it never calls `chrome.history`. Don't re-add the permission without wiring it up.
+- `background.js` registers `chrome.action.onClicked` to open `chrome://newtab` — the toolbar button is intentionally wired, not decorative. Keep the listener when editing.
 - `npm run dev` shows a yellow "Local preview" badge (`#dev-badge`) that is hidden in the extension — controlled by `app.js` based on `chrome.runtime` availability.
-- Icon fetches (`lib/icons.js`) hit `https://api.iconify.design/*` (declared host permission). Favicons use `referrerPolicy="no-referrer"`.
+- Remote fetches: `lib/icons.js` → `https://api.iconify.design/*` and `lib/images.js` → `https://api.openverse.org/*`. Both are declared in `host_permissions`. Icon embedding (`fetchUrlToDataUrl`) also fetches arbitrary user-provided icon URLs best-effort (relies on remote CORS). Favicons render via `<img>` against `https://www.google.com/s2/favicons` with `referrerPolicy="no-referrer"` — image loading only, not a data API.
+- `PRIVACY.md` at the repo root is the privacy policy referenced in the Chrome Web Store listing. Keep it in sync with actual permissions/data flows when changing what the extension accesses.
 - `feature.md` is a wishlist of unimplemented ideas, not a spec — do not treat it as requirements.
