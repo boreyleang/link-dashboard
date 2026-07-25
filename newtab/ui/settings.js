@@ -4,6 +4,12 @@
  */
 import { fileToBackgroundDataUrl } from '../../lib/icons.js';
 import { createBackup } from '../../lib/backup.js';
+import {
+  BG_DARK,
+  BG_PRESETS,
+  normalizeHex,
+  contrastPaletteForBackground,
+} from '../../lib/theme.js';
 import { toColorInput, setActiveTab } from '../core/dom.js';
 
 const BG_MODES = new Set(['none', 'url', 'upload']);
@@ -13,10 +19,40 @@ export function createSettingsModel(ctx) {
 
   let bgMode = 'none';
 
+  /** Apply background + opposite-contrast text/UI colors for readability. */
+  function applyContrastFromBackground(bg) {
+    const palette = contrastPaletteForBackground(bg);
+    const root = document.documentElement;
+    root.style.setProperty('--bg', palette.bg);
+    root.style.setProperty('--text', palette.text);
+    root.style.setProperty('--text-muted', palette.textMuted);
+    root.style.setProperty('--bg-elevated', palette.bgElevated);
+    root.style.setProperty('--bg-elevated-hover', palette.bgElevatedHover);
+    root.style.setProperty('--border', palette.border);
+    root.style.setProperty('--shadow', palette.shadow);
+    root.style.colorScheme = palette.colorScheme;
+    document.body.style.backgroundColor = palette.bg;
+
+    // Keep data-theme in sync so light-only CSS rules (modals, tiles) match text.
+    if (palette.isLight) {
+      root.setAttribute('data-theme', 'light');
+      if (els.themeIcon) {
+        els.themeIcon.textContent = '☀️';
+        els.btnTheme.title = 'Switch to dark theme';
+      }
+    } else {
+      root.removeAttribute('data-theme');
+      if (els.themeIcon) {
+        els.themeIcon.textContent = '🌙';
+        els.btnTheme.title = 'Switch to light theme';
+      }
+    }
+    return palette;
+  }
+
   function apply(settings) {
-    const bg = settings.backgroundColor || '#0f1221';
-    document.documentElement.style.setProperty('--bg', bg);
-    document.body.style.backgroundColor = bg;
+    const bg = normalizeHex(settings.backgroundColor) || BG_DARK;
+    applyContrastFromBackground(bg);
     if (settings.backgroundImage) {
       document.body.style.backgroundImage = `url(${JSON.stringify(settings.backgroundImage)})`;
     } else {
@@ -94,7 +130,7 @@ export function createSettingsModel(ctx) {
 
   function updateBgPreview() {
     const image = els.settingBgImage.value.trim();
-    const color = els.settingBgColor.value || '#0f1221';
+    const color = normalizeHex(els.settingBgColor.value) || BG_DARK;
     els.bgPreview.style.backgroundColor = color;
     if (image) {
       els.bgPreviewWrap.hidden = false;
@@ -104,6 +140,47 @@ export function createSettingsModel(ctx) {
       els.bgPreview.style.backgroundImage = 'none';
       els.bgPreviewWrap.hidden = bgMode === 'none';
     }
+    syncBgPresetSelection(color);
+  }
+
+  function syncBgPresetSelection(color) {
+    if (!els.bgPresets) return;
+    const selected = (normalizeHex(color) || BG_DARK).toLowerCase();
+    for (const btn of els.bgPresets.querySelectorAll('[data-bg-preset]')) {
+      const active = (btn.dataset.bgPreset || '').toLowerCase() === selected;
+      btn.classList.toggle('is-active', active);
+      btn.setAttribute('aria-checked', String(active));
+    }
+  }
+
+  function setBackgroundColor(color, { live = false } = {}) {
+    const next = normalizeHex(color) || BG_DARK;
+    els.settingBgColor.value = toColorInput(next, BG_DARK);
+    updateBgPreview();
+    if (live) {
+      // Live-preview background + opposite font color so contrast is obvious.
+      applyContrastFromBackground(next);
+    }
+  }
+
+  function renderBgPresets() {
+    if (!els.bgPresets) return;
+    const dark = BG_PRESETS.filter((p) => p.group === 'dark');
+    const light = BG_PRESETS.filter((p) => p.group === 'light');
+    const swatch = (preset) =>
+      `<button type="button" class="bg-preset" role="radio" data-bg-preset="${preset.value}" ` +
+      `style="background-color: ${preset.value}" title="${preset.label}" ` +
+      `aria-label="${preset.label}" aria-checked="false"></button>`;
+
+    els.bgPresets.innerHTML =
+      `<div class="bg-preset-group">` +
+      `<span class="bg-preset-group-label">Popular dark</span>` +
+      `<div class="bg-preset-swatches" role="presentation">${dark.map(swatch).join('')}</div>` +
+      `</div>` +
+      `<div class="bg-preset-group">` +
+      `<span class="bg-preset-group-label">Popular light</span>` +
+      `<div class="bg-preset-swatches" role="presentation">${light.map(swatch).join('')}</div>` +
+      `</div>`;
   }
 
   function syncColumnsLabel() {
@@ -114,7 +191,7 @@ export function createSettingsModel(ctx) {
   function open() {
     const settings = state.getSettings();
     const bgImage = settings.backgroundImage || '';
-    els.settingBgColor.value = toColorInput(settings.backgroundColor || '#0f1221');
+    els.settingBgColor.value = toColorInput(settings.backgroundColor || BG_DARK, BG_DARK);
     els.settingBgImage.value = bgImage;
     els.settingBgImageUrl.value = bgImage.startsWith('http') ? bgImage : '';
     els.settingBgFile.value = '';
@@ -150,8 +227,13 @@ export function createSettingsModel(ctx) {
     if (bgMode === 'url') backgroundImage = els.settingBgImageUrl.value.trim();
     else if (bgMode === 'upload') backgroundImage = els.settingBgImage.value.trim();
 
+    const backgroundColor = normalizeHex(els.settingBgColor.value) || BG_DARK;
+    const palette = contrastPaletteForBackground(backgroundColor);
+
     state.patchSettings({
-      backgroundColor: els.settingBgColor.value,
+      backgroundColor,
+      // Keep theme toggle aligned with the contrast that the background requires.
+      theme: palette.theme,
       backgroundImage,
       tileSize,
       columns: Number(els.settingColumns.value) || 0,
@@ -192,9 +274,14 @@ export function createSettingsModel(ctx) {
   }
 
   function init() {
+    renderBgPresets();
     els.btnSettings.addEventListener('click', () => open());
     els.settingsModalClose.addEventListener('click', () => els.settingsModal.close());
     els.btnSettingsCancel.addEventListener('click', () => els.settingsModal.close());
+    // Restore committed background if the user only live-previewed (Esc / cancel / X).
+    els.settingsModal.addEventListener('close', () => {
+      apply(state.getSettings());
+    });
     els.settingsForm.addEventListener('submit', save);
     els.btnReset.addEventListener('click', reset);
     els.settingColumns.addEventListener('input', syncColumnsLabel);
@@ -207,7 +294,16 @@ export function createSettingsModel(ctx) {
       els.settingBgImage.value = els.settingBgImageUrl.value.trim();
       updateBgPreview();
     });
-    els.settingBgColor.addEventListener('input', updateBgPreview);
+    els.settingBgColor.addEventListener('input', () => {
+      setBackgroundColor(els.settingBgColor.value, { live: true });
+    });
+    if (els.bgPresets) {
+      els.bgPresets.addEventListener('click', (event) => {
+        const btn = event.target.closest('[data-bg-preset]');
+        if (!btn) return;
+        setBackgroundColor(btn.dataset.bgPreset, { live: true });
+      });
+    }
     els.settingBgFile.addEventListener('change', async (event) => {
       const file = event.target.files?.[0];
       if (file) await applyBackgroundFile(file);

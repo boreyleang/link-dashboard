@@ -535,10 +535,25 @@
         </header>
 
         <div class="modal-body">
-          <label class="field field-inline">
-            <span>Background color</span>
-            <input type="color" id="setting-bg-color" value="#0f1221" />
-          </label>
+          <div class="field">
+            <span class="field-label">Background color</span>
+            <p class="panel-help">
+              Recommended popular colors below. Font color switches automatically
+              to the opposite of the background so text stays clear.
+            </p>
+            <div class="bg-color-row">
+              <div
+                class="bg-presets"
+                id="bg-presets"
+                role="radiogroup"
+                aria-label="Recommended popular background colors"
+              ></div>
+              <label class="field field-inline bg-color-custom">
+                <span>Custom</span>
+                <input type="color" id="setting-bg-color" value="#0f1221" />
+              </label>
+            </div>
+          </div>
 
           <section class="bg-picker" aria-label="Background photo">
             <div class="icon-picker-header">

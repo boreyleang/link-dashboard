@@ -117,6 +117,7 @@ const els = {
   settingsForm: document.getElementById('settings-form'),
   settingsModalClose: document.getElementById('settings-modal-close'),
   settingBgColor: document.getElementById('setting-bg-color'),
+  bgPresets: document.getElementById('bg-presets'),
   settingBgImage: document.getElementById('setting-bg-image'),
   settingBgImageUrl: document.getElementById('setting-bg-image-url'),
   settingBgFile: document.getElementById('setting-bg-file'),
@@ -243,9 +244,10 @@ async function init() {
   ctx.onNavigate = (item) => ctx.recent.recordVisit(item);
   els.grid.addEventListener('click', (event) => ctx.grid.onNavigate(event));
 
-  // Apply persisted state to the UI
-  ctx.theme.apply(state.getSettings().theme);
-  ctx.settings.apply(state.getSettings());
+  // Apply persisted state to the UI (sync stock bg with theme so light text
+  // never sits on the dark default background after a theme switch).
+  const themeApply = ctx.theme.applyWithBackground(state.getSettings().theme);
+  if (themeApply.changed) await state.persist();
   ctx.lock.apply();
   ctx.settings.applyPanelVisibility();
 

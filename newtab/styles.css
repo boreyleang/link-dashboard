@@ -945,6 +945,72 @@ body::before {
   background-repeat: no-repeat;
 }
 
+/* Background color presets (Customize modal) */
+.bg-color-row {
+  display: grid;
+  gap: 12px;
+}
+
+.bg-presets {
+  display: grid;
+  gap: 12px;
+}
+
+.bg-preset-group {
+  display: grid;
+  gap: 8px;
+}
+
+.bg-preset-group-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.bg-preset-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bg-preset {
+  appearance: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 2px solid var(--border);
+  cursor: pointer;
+  padding: 0;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+  transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.bg-preset:hover,
+.bg-preset:focus-visible {
+  transform: scale(1.08);
+  outline: none;
+  border-color: var(--primary);
+}
+
+.bg-preset.is-active {
+  border-color: var(--primary);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--primary) 45%, transparent),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
+.bg-color-custom {
+  max-width: 220px;
+}
+
+.field-label {
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: var(--text);
+}
+
 .icon-picker-header {
   display: flex;
   flex-direction: column;
