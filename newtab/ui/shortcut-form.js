@@ -4,7 +4,7 @@
  * (icon mode, pending icon resolution, search results).
  */
 import { createShortcut, updateShortcut, removeShortcut } from '../../lib/shortcuts.js';
-import { faviconFromUrl } from '../../lib/url.js';
+import { faviconFromUrl, normalizeUrl } from '../../lib/url.js';
 import {
   FREE_ICON_STORES,
   ICON_SEARCH_SUGGESTIONS,
@@ -30,6 +30,7 @@ export function createShortcutFormModel(ctx) {
   let selectedSearchIconId = '';
   let searchDebounceTimer = null;
   let iconColorDebounceTimer = null;
+  let fromTab = false;
 
   // ── Static picker chrome ──────────────────────────────────
 
@@ -232,6 +233,7 @@ export function createShortcutFormModel(ctx) {
 
   function open(item = null) {
     const editing = Boolean(item);
+    fromTab = false;
     els.shortcutModalTitle.textContent = editing ? 'Edit shortcut' : 'Add shortcut';
     els.btnDelete.hidden = !editing;
     els.btnArchive.hidden = !editing;
@@ -277,6 +279,16 @@ export function createShortcutFormModel(ctx) {
     els.fieldTitle.focus();
   }
 
+  function openFromTab({ title, url }) {
+    fromTab = true;
+    open();
+    els.shortcutModalTitle.textContent = 'Save current tab';
+    els.fieldTitle.value = title || '';
+    els.fieldUrl.value = url || '';
+    els.fieldGroup.value = '';
+    updateFormPreview();
+  }
+
   async function save(event) {
     event.preventDefault();
 
@@ -319,6 +331,15 @@ export function createShortcutFormModel(ctx) {
     if (!payload.url.trim()) {
       toast.show('URL is required');
       return;
+    }
+
+    if (fromTab && !id) {
+      const normalizedUrl = normalizeUrl(payload.url);
+      const exists = state.getShortcuts().some((s) => s.url === normalizedUrl);
+      if (exists) {
+        toast.show('This link is already saved');
+        return;
+      }
     }
 
     if (id) {
@@ -428,5 +449,5 @@ export function createShortcutFormModel(ctx) {
     els.btnArchive.addEventListener('click', () => ctx.archive.archiveSingle());
   }
 
-  return { init, open, save };
+  return { init, open, openFromTab, save };
 }

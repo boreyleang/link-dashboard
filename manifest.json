@@ -6,7 +6,7 @@
   "chrome_url_overrides": {
     "newtab": "newtab/index.html"
   },
-  "permissions": ["storage", "unlimitedStorage", "bookmarks", "alarms"],
+  "permissions": ["storage", "unlimitedStorage", "bookmarks", "alarms", "tabs"],
   "host_permissions": [
     "https://api.iconify.design/*",
     "https://api.openverse.org/*"
@@ -20,7 +20,8 @@
     "128": "icons/icon128.png"
   },
   "action": {
-    "default_title": "Open Link Dashboard",
+    "default_title": "Save link to Dashboard",
+    "default_popup": "popup/popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png"

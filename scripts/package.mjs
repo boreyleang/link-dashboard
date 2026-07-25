@@ -22,6 +22,7 @@ const INCLUDE = [
   'icons',
   'lib',
   'newtab',
+  'popup',
 ];
 
 function rmrf(target) {

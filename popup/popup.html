@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Save to Link Dashboard</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup">
+    <h1 class="popup-title">Save to Dashboard</h1>
+
+    <form id="save-form">
+      <label class="field">
+        <span>Title</span>
+        <input type="text" id="field-title" placeholder="Page title" required />
+      </label>
+
+      <label class="field">
+        <span>URL</span>
+        <input type="url" id="field-url" placeholder="https://..." required />
+      </label>
+
+      <label class="field">
+        <span>Group</span>
+        <input type="text" id="field-group" placeholder="e.g. Social, Work" list="group-list" />
+        <datalist id="group-list"></datalist>
+      </label>
+
+      <p class="status" id="status" hidden></p>
+
+      <div class="actions">
+        <button type="button" id="btn-cancel" class="btn btn-ghost">Cancel</button>
+        <button type="submit" id="btn-save" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
