@@ -136,6 +136,7 @@ const els = {
   settingRecentCount: document.getElementById('setting-recent-count'),
   settingShowFavorites: document.getElementById('setting-show-favorites'),
   btnReset: document.getElementById('btn-reset'),
+  btnResetTheme: document.getElementById('btn-reset-theme'),
   notesWidget: document.getElementById('notes-widget'),
   notesToggle: document.getElementById('notes-toggle'),
   notesBody: document.getElementById('notes-body'),

@@ -273,6 +273,14 @@ export function createSettingsModel(ctx) {
     toast.show('Defaults restored (backup created)');
   }
 
+  function resetTheme() {
+    state.patchSettings({ theme: 'dark', backgroundColor: BG_DARK });
+    apply(state.getSettings());
+    applyPanelVisibility();
+    state.persist();
+    toast.show('Theme reset to dark mode');
+  }
+
   function init() {
     renderBgPresets();
     els.btnSettings.addEventListener('click', () => open());
@@ -284,6 +292,7 @@ export function createSettingsModel(ctx) {
     });
     els.settingsForm.addEventListener('submit', save);
     els.btnReset.addEventListener('click', reset);
+    els.btnResetTheme.addEventListener('click', resetTheme);
     els.settingColumns.addEventListener('input', syncColumnsLabel);
 
     for (const tab of document.querySelectorAll('[data-bg-mode]')) {
