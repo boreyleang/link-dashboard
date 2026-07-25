@@ -1,6 +1,6 @@
 {
   "name": "chrome-link-dashboard",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "private": true,
   "description": "Customizable Chrome new-tab link dashboard",
   "type": "module",

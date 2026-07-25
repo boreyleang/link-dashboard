@@ -1,6 +1,6 @@
 # Privacy Policy — Link Dashboard
 
-_Last updated: 2026-07-23_
+_Last updated: 2026-07-25_
 
 Link Dashboard ("the extension") replaces your browser's New Tab page with a customizable dashboard of web-link shortcuts. This policy describes what data the extension accesses, where it is stored, and what network requests it makes.
 
@@ -22,6 +22,7 @@ All of this data lives on your machine. The developer does not collect, receive,
 ## 2. Permissions and why each is requested
 
 - **`storage`** / **`unlimitedStorage`** — persist your dashboard, notes, and backups locally and allow large uploaded images.
+- **`tabs`** — read the active tab's title and URL when you click the toolbar icon to save a link via the popup form. Only the current tab is accessed; no browsing history is collected.
 - **`bookmarks`** — read your browser bookmark tree for the optional Bookmarks widget. The extension only **reads** bookmarks; it never creates, modifies, or deletes them, and does not send them anywhere.
 - **`alarms`** — schedule the optional automatic backup of your local dashboard state.
 
