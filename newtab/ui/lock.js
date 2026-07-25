@@ -43,7 +43,7 @@ export function createLockModel({ els, state, selection, toast }) {
     } catch (error) {
       console.error('Failed to save lock state', error);
     }
-    toast.show(locked ? 'Dashboard locked' : 'Dashboard unlocked — you can now edit');
+    toast.show(locked ? 'Dashboard locked' : 'Dashboard unlocked — drag & drop to reorder links');
   }
 
   function initFromSettings(settings) {
