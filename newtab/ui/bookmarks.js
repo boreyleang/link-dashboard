@@ -20,15 +20,6 @@ export function createBookmarksModel(ctx) {
     a.setAttribute('role', 'treeitem');
     a.title = `${node.title}\n${node.url}`;
 
-    const img = document.createElement('img');
-    img.className = 'bm-link-icon';
-    img.alt = '';
-    img.referrerPolicy = 'no-referrer';
-    try {
-      const host = new URL(node.url).hostname;
-      img.src = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=32`;
-    } catch { img.hidden = true; }
-
     const title = document.createElement('span');
     title.className = 'bm-link-title';
     title.textContent = node.title || node.url;
@@ -37,7 +28,7 @@ export function createBookmarksModel(ctx) {
     url.className = 'bm-link-url';
     try { url.textContent = new URL(node.url).hostname; } catch { url.textContent = ''; }
 
-    a.append(img, title, url);
+    a.append(title, url);
     return a;
   }
 
