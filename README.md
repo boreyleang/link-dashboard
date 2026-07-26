@@ -3,7 +3,7 @@
 **A customizable New Tab page for the links you actually use.**
 
 [![Chrome Web Store](https://img.shields.io/chrome-web-store/v/bmgokniifobafhddjkkbafddmfhnhamf?label=Chrome%20Web%20Store&logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/bmgokniifobafhddjkkbafddmfhnhamf)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Manifest V3](https://img.shields.io/badge/Manifest-V3-green.svg)](https://developer.chrome.com/docs/extensions/mv3/)
 
 Open a new tab → your shortcuts are already there. No account, no cloud, no clutter.
@@ -179,7 +179,7 @@ Store copy, permission justifications, and screenshot guidance live in [STORE_LI
 
 ## License
 
-MIT — free and open source.
+[MIT](LICENSE) — free and open source.
 
 ---
 
